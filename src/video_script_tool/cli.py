@@ -16,6 +16,7 @@ def main():
     parser.add_argument("--only-audio-preprocessing", "-oapp", help="only audio preprocessing", action="store_true")
     parser.add_argument("--audio-preprocessing", "-app", help="audio preprocessing, then video creation", action="store_true")
     parser.add_argument("--omit-snippet-production", "-osp", help="do not produce new snippets, but use existing", action="store_true")
+    parser.add_argument("--snippet-limit", "-sl", help="do not produce new snippets, but use existing", default=None, type=int)
 
     args = parser.parse_args()
 

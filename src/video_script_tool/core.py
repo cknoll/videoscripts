@@ -19,6 +19,7 @@ class MainManager:
         self.produce_snippets_flag = not (args.omit_snippet_production == True)
         self.only_audio_preprocessing_flag = args.only_audio_preprocessing
         self.audio_preprocessing_flag = args.audio_preprocessing or args.only_audio_preprocessing
+        self.snippet_limit = args.snippet_limit or float("inf")
 
         self.file_list_fpath = os.path.join(self.project_dir, "filelist.txt")
 
@@ -78,7 +79,7 @@ class MainManager:
 
         os.makedirs(self.audio_pp_dirpath, exist_ok=True)
 
-        for audio_fpath in self.audio_files:
+        for i, audio_fpath in enumerate(self.audio_files, start=1):
 
             rate, audio_data = wavfile.read(audio_fpath)
 
@@ -99,7 +100,10 @@ class MainManager:
                 pb.NoiseGate(threshold_db=-30, ratio=1.5, release_ms=250),
                 pb.Compressor(threshold_db=-16, ratio=2.5),
                 pb.LowShelfFilter(cutoff_frequency_hz=400, gain_db=10, q=1),
-                pb.Gain(gain_db=10)
+                pb.LowShelfFilter(cutoff_frequency_hz=200, gain_db=10, q=1),
+
+                # this leads to clipping
+                # pb.Gain(gain_db=10)
             ])
 
             # Pedalboard expects floating point data
@@ -114,6 +118,9 @@ class MainManager:
             wavfile.write(target_fpath, rate, resulting_audio)
             print(f"File written: {target_fpath}")
 
+            if i >= self.snippet_limit:
+                break
+
         self.use_preprocessed_audio = True
 
     def get_adapted_audio_fpath(self, audio_fpath, force_adapted_path=False):
@@ -125,7 +132,11 @@ class MainManager:
 
     def create_video(self, produce_snippets=True):
 
-        output_path = os.path.join(self.project_dir, "combined-video.mp4")
+        if self.use_preprocessed_audio:
+            ppa_part = "_ppa"
+        else:
+            ppa_part = ""
+        output_path = os.path.join(self.project_dir, f"combined-video{ppa_part}.mp4")
         cmd = " ".join(
             ["ffmpeg", "-f", "concat", "-safe", "0", "-i", self.file_list_fpath, "-c", "copy", output_path]
         )
@@ -181,6 +192,9 @@ class MainManager:
             # ffmpeg expects the paths in the filelist relative to the path of the filelist
             video_snippet_fpath_rel = os.path.join(SNIPPET_DIR, f"temp{i:04d}.mp4")
             file_list_entries.append(f"file {video_snippet_fpath_rel}")
+
+            if i >= self.snippet_limit:
+                break
 
         if 1:
             with open(self.file_list_fpath, "w") as fp:

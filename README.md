@@ -16,10 +16,18 @@ I want to achieve this either via command line or via a python script.
 project_dir/
 ├── audio/
 │   ├── noise/
-│   │   └── noise.wav
+│   │   └── noise.wav       (optional, currently not used)
 │   ├── audio01.wav
 │   └── ...
 ├── images/
 │   ├── img01.png
 │   └── ...
+├── all_texts.md
+│
+│
+│   ↓ resulting files ↓
+│
+│
+├── filelist.txt
+└── combined-video.mp4
 ```

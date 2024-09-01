@@ -31,3 +31,12 @@ def capture_slides():
 
     from . import capture_slides
     capture_slides.main(args)
+
+def record_audio_gui():
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("project_dir", help="specify project dir (see README)")
+    args = parser.parse_args()
+
+    from . import gui
+    gui.main(args)

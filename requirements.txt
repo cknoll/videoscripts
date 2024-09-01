@@ -1,1 +1,2 @@
 noisereduce
+pyaudio

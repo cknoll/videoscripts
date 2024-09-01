@@ -1,9 +1,11 @@
 - [.] convert hedgedoc slides into png images (with every fragment)
     - [ ] test fragments
     - [ ] trim scroll bar
+- [ ] extract slide text from special comments in markdown
 - [.] make it possible to easily create multiple audio recordings (one key -> save running recording + start new recording)
     - [x] implement imple gui
-    - [ ] make audio recording work
+    - [x] make audio recording work
+    - [x] improve gui
 - [ ] Extract text for each fragment to separate text-file
-- [ ] improve audio preprocessing
-    - [ ]
+- [x] improve audio preprocessing
+    - [x] prevent clipping

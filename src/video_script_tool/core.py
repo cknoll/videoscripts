@@ -99,9 +99,8 @@ class MainManager:
             board = pb.Pedalboard([
                 pb.NoiseGate(threshold_db=-30, ratio=1.5, release_ms=250),
                 pb.Compressor(threshold_db=-16, ratio=2.5),
-                pb.LowShelfFilter(cutoff_frequency_hz=400, gain_db=10, q=1),
+                #pb.LowShelfFilter(cutoff_frequency_hz=400, gain_db=10, q=1),
                 pb.LowShelfFilter(cutoff_frequency_hz=200, gain_db=10, q=1),
-
                 # this leads to clipping
                 # pb.Gain(gain_db=10)
             ])
@@ -138,7 +137,7 @@ class MainManager:
             ppa_part = ""
         output_path = os.path.join(self.project_dir, f"combined-video{ppa_part}.mp4")
         cmd = " ".join(
-            ["ffmpeg", "-f", "concat", "-safe", "0", "-i", self.file_list_fpath, "-c", "copy", output_path]
+            ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", self.file_list_fpath, "-c", "copy", output_path]
         )
 
         os.system(cmd)
@@ -158,12 +157,9 @@ class MainManager:
             audio_fpath = self.get_adapted_audio_fpath(audio_fpath)
             video_snippet_fpath_full = os.path.join(SNIPPET_DIR_FULL, f"temp{i:04d}.mp4")
 
-            # delete existing snippet file (prevent ffmpeg from askinig)
-            if os.path.isfile(video_snippet_fpath_full):
-                os.remove(video_snippet_fpath_full)
-
             cmd_list = [
                 "ffmpeg",
+                "-y",  # overwrite existing files
                 "-loop",
                 "1",
                 "-i",

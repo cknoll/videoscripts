@@ -4,13 +4,13 @@ Command line interface for autobrowser package
 
 import argparse
 from ipydex import IPS, activate_ips_on_exception
-from . import core
 
 activate_ips_on_exception()
 
 
 def main():
 
+    from . import core
     parser = argparse.ArgumentParser()
     parser.add_argument("project_dir", help="specify project dir (see README)")
     parser.add_argument("--only-audio-preprocessing", "-oapp", help="only audio preprocessing", action="store_true")
@@ -20,3 +20,14 @@ def main():
     args = parser.parse_args()
 
     core.main(args)
+
+
+def capture_slides():
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("project_dir", help="specify project dir (see README)")
+    parser.add_argument("url", help="specify url of presentation")
+    args = parser.parse_args()
+
+    from . import capture_slides
+    capture_slides.main(args)

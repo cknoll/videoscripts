@@ -42,7 +42,11 @@ class ImageTextAudioTool(QMainWindow):
         self.is_recording = False
         self.audio_frames = None
         self.load_data()
-        self.setup_audio()
+
+        # setup audio
+        self.audio = pyaudio.PyAudio()
+        self.stream = None
+
         self.initUI()
 
     def load_data(self):
@@ -94,19 +98,15 @@ class ImageTextAudioTool(QMainWindow):
 
         # Load image
         pixmap = QPixmap(image_path)
-        self.image_label.setPixmap(pixmap.scaled(800, 600, Qt.KeepAspectRatio))
+        self.image_label.setPixmap(pixmap.scaled(600, 600, Qt.KeepAspectRatio))
 
         # render markdown
         html_content = markdown.markdown(self.md_snippets[self.current_index])
-        self.text_browser.setHtml(html_content)
 
-    def setup_audio(self):
-        self.audio = pyaudio.PyAudio()
-        self.stream = self.audio.open(format=pyaudio.paInt16,
-                                      channels=1,
-                                      rate=44100,
-                                      input=True,
-                                      frames_per_buffer=1024)
+        style = "font-size: x-large; text-align:center;"
+        outer_html = f'<div style="{style}">{html_content}</div>'
+        self.text_browser.setHtml(outer_html)
+
 
     def change_index_by(self, value):
         assert value in (-1, 1)
@@ -198,7 +198,17 @@ class ImageTextAudioTool(QMainWindow):
 
 
         fpath = pjoin(self.audio_path, f"{self.get_current_image_basename()}.wav")
-        print(f"saving audio:    {len(self.audio_frames)} frames    {fpath}")
+
+        if self.audio_frames is None:
+            af_len = 0
+        else:
+            af_len = len(self.audio_frames)
+
+        if af_len == 0:
+            print(f"no audio to save (0 frames)")
+            return
+
+        print(f"saving audio:    {af_len} frames    {fpath}")
 
         with wave.open(fpath, 'wb') as wf:
             wf.setnchannels(1)
@@ -209,10 +219,12 @@ class ImageTextAudioTool(QMainWindow):
 
 
     def closeEvent(self, event):
-        print("closeEvent")
-        return
-        self.stream.stop_stream()
-        self.stream.close()
+        """
+        This is called if the window is closed via click on the x-symbol
+        """
+        if self.stream is not None:
+            self.stream.stop_stream()
+            self.stream.close()
         self.audio.terminate()
 
 

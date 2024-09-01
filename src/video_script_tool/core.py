@@ -4,7 +4,9 @@ import glob
 import argparse
 
 from scipy.io import wavfile
+import numpy as np
 import noisereduce as nr
+import pedalboard as pb
 
 from . import util
 
@@ -80,14 +82,36 @@ class MainManager:
 
             rate, audio_data = wavfile.read(audio_fpath)
 
-            assert self.noise_data is not None
-            _, noise = wavfile.read(self.noise_fpath)
+            # separate noise file currently not used
 
-            reduced_noise_audio = nr.reduce_noise(y=audio_data[:, 0], sr=rate, stationary=True, prop_decrease=0.75)
+            # assert self.noise_data is not None
+            # _, noise = wavfile.read(self.noise_fpath)
+
+            if len(audio_data.shape) == 2:
+                # the wav was recorded with stereo -> select first channel
+                audio_data = audio_data[:, 0]
+
+            reduced_noise_audio = nr.reduce_noise(y=audio_data, sr=rate, stationary=True, prop_decrease=0.75)
+
+            # perform more Audio filtering
+
+            board = pb.Pedalboard([
+                pb.NoiseGate(threshold_db=-30, ratio=1.5, release_ms=250),
+                pb.Compressor(threshold_db=-16, ratio=2.5),
+                pb.LowShelfFilter(cutoff_frequency_hz=400, gain_db=10, q=1),
+                pb.Gain(gain_db=10)
+            ])
+
+            # Pedalboard expects floating point data
+            # By convention, floating point audio data is normalized to the range of [-1.0,1.0]
+            # https://stackoverflow.com/a/42544738
+
+            rescaled_audio = reduced_noise_audio.astype(np.float32, order='C') / 32768.0
+            resulting_audio = board(rescaled_audio, rate)
 
             target_fpath = self.get_adapted_audio_fpath(audio_fpath, force_adapted_path=True)
 
-            wavfile.write(target_fpath, rate, reduced_noise_audio)
+            wavfile.write(target_fpath, rate, resulting_audio)
             print(f"File written: {target_fpath}")
 
         self.use_preprocessed_audio = True

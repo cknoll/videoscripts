@@ -1,5 +1,7 @@
 import subprocess
 import os
+import glob
+from ipydex import IPS
 
 
 def get_audio_duration(audio_file):
@@ -20,49 +22,71 @@ def get_audio_duration(audio_file):
     return float(result.stdout)
 
 
-def create_video(num_pairs):
-    with open("input.txt", "w") as f:
-        for i in range(1, num_pairs + 1):
-            image = f"image{i}.jpg"
-            audio = f"audio{i}.wav"
+def get_data():
+    image_files = glob.glob("images/*.png")
+    image_files.sort()
+    audio_files = glob.glob("audio/*.wav")
+    audio_files.sort()
 
-            duration = get_audio_duration(audio)
+    assert len(audio_files) > 0
+    assert len(audio_files) == len(image_files)
 
-            temp_video = f"temp{i}.mp4"
-            subprocess.run(
-                [
-                    "ffmpeg",
-                    "-loop",
-                    "1",
-                    "-i",
-                    image,
-                    "-i",
-                    audio,
-                    "-c:v",
-                    "libx264",
-                    "-tune",
-                    "stillimage",
-                    "-c:a",
-                    "aac",
-                    "-b:a",
-                    "192k",
-                    "-pix_fmt",
-                    "yuv420p",
-                    "-t",
-                    str(duration),
-                    temp_video,
-                ]
-            )
-
-            f.write(f"file '{temp_video}'\n")
-
-    subprocess.run(["ffmpeg", "-f", "concat", "-safe", "0", "-i", "input.txt", "-c", "copy", "output.mp4"])
-
-    # Clean up temporary files
-    for i in range(1, num_pairs + 1):
-        os.remove(f"temp{i}.mp4")
-    os.remove("input.txt")
+    return image_files, audio_files
 
 
-# Usage
-create_video(N)  # Replace N with the number of image-audio pairs
+def create_video():
+
+    image_files, audio_files = get_data()
+
+    file_list_entries = []
+    for i, (image, audio) in enumerate(zip(image_files, audio_files), start=1):
+
+        duration = get_audio_duration(audio)
+
+        video_snippet_fname = f"temp{i:04d}.mp4"
+        cmd_list = [
+            "ffmpeg",
+            "-loop",
+            "1",
+            "-i",
+            image,
+            "-i",
+            audio,
+            "-c:v",
+            "libx264",
+            '-vf "pad=ceil(iw/2)*2:ceil(ih/2)*2"',  # this deals with uneven image formats
+            "-tune",
+            "stillimage",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
+            "-pix_fmt",
+            "yuv420p",
+            "-t",
+            str(duration),
+            video_snippet_fname,
+        ]
+
+        os.system(" ".join(cmd_list))
+
+        file_list_entries.append(f"file {video_snippet_fname}")
+
+    if 1:
+        with open("input.txt", "w") as fp:
+            fp.write("\n".join(file_list_entries))
+            fp.write("\n")
+
+    cmd = " ".join(
+        ["ffmpeg", "-f", "concat", "-safe", "0", "-i", "input.txt", "-c", "copy", "output.mp4"]
+    )
+
+    os.system(cmd)
+
+    if 0:
+        # Clean up temporary files
+        for fname in file_list_entries:
+            os.remove(fname)
+        os.remove("input.txt")
+
+create_video()

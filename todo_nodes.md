@@ -2,6 +2,8 @@
     - [ ] test fragments
     - [ ] trim scroll bar
 - [ ] extract slide text from special comments in markdown
+    - example source code url: https://hedgedoc.c3d2.de/nXPCfGFhQuG5L9en-J_KJA#
+    - [ ] download md source
 - [.] make it possible to easily create multiple audio recordings (one key -> save running recording + start new recording)
     - [x] implement imple gui
     - [x] make audio recording work

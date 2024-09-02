@@ -30,6 +30,7 @@ classifiers=[
 video-script = "video_script_tool.cli:main"
 video-script-cs = "video_script_tool.cli:capture_slides"
 video-script-rag = "video_script_tool.cli:record_audio_gui"
+video-script-et = "video_script_tool.cli:extract_texts"
 
 [tool.setuptools.packages.find]
 # note: `include-package-data = true` by default in pyproject.toml

@@ -41,3 +41,14 @@ def record_audio_gui():
 
     from . import gui
     gui.main(args)
+
+def extract_texts():
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("project_dir", help="specify project dir (see README)")
+    parser.add_argument("url", help="specify url of markdown source code of presentation")
+    args = parser.parse_args()
+
+    from . import md_processor
+
+    md_processor.extract_text(args)

@@ -1,9 +1,4 @@
-# -*- coding: utf-8 -*-
-
-try:
-    from .core import *
-except ImportError:
-    # this might be relevant during the installation process
-    pass
+# We do not import `core` here because this significantly slows down
+# response-time on the command line for all commands which live outside core
 
 from .release import __version__

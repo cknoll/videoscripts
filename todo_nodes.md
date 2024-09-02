@@ -1,9 +1,13 @@
 - [.] convert hedgedoc slides into png images (with every fragment)
-    - [ ] test fragments
+    - [x] test fragments
     - [ ] trim scroll bar
-- [ ] extract slide text from special comments in markdown
+- [ ] achieve consistent naming of the components
+- [x] extract slide text from special comments in markdown
     - example source code url: https://hedgedoc.c3d2.de/nXPCfGFhQuG5L9en-J_KJA#
-    - [ ] download md source
+    - [x] download md source
+    - [x] select content of special comments
+    - [x] smart caching
+    - [x] write `all_texts.md`
 - [.] make it possible to easily create multiple audio recordings (one key -> save running recording + start new recording)
     - [x] implement imple gui
     - [x] make audio recording work

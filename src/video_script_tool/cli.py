@@ -42,11 +42,17 @@ def record_audio_gui():
     from . import gui
     gui.main(args)
 
+
 def extract_texts():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("project_dir", help="specify project dir (see README)")
     parser.add_argument("url", help="specify url of markdown source code of presentation")
+
+    cache_group = parser.add_mutually_exclusive_group()
+    cache_group.add_argument("--force-reload", "-fr", help="force that a cached version is discarded", action="store_true")
+    cache_group.add_argument("--force-cache", "-fc", help="force that a cached version is used", action="store_true")
+
     args = parser.parse_args()
 
     from . import md_processor

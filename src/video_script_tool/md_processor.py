@@ -1,14 +1,97 @@
+import requests
+import os
+import re
+import time
+
+from ipydex import IPS
+
+pjoin = os.path.join
 
 class TextExtractor:
 
     def __init__(self, args):
+        self.project_dir = args.project_dir
         self.url = args.url
+        self.force_reload = args.force_reload
+        self.force_cache = args.force_cache
+        self.slides_full_source_fpath = pjoin(self.project_dir, "slides_full_source.md")
+        self.target_fpath = pjoin(self.project_dir, "all_texts.md")
+
+        self.slides_full_source = None
+        self.slide_src_list = None
+
+        self.fragment_texts: list[list] = None
 
     def perform_text_extraction(self):
-        print("mockup", self.url)
+        self.download_source()
+        self.split_into_slides()
+        self.extract_texts_from_special_comments()
+        self.write_fragment_texts()
+
+    def download_source(self) -> None:
+
+        if os.path.isfile(self.slides_full_source_fpath):
+            stat = os.stat(self.slides_full_source_fpath)
+
+            # just load cached file
+            if (time.time()- stat.st_mtime)/60 < 10 or self.force_cache:
+
+                print(f"using cached version of {self.slides_full_source_fpath} (no download)")
+                with open(self.slides_full_source_fpath, "r") as fp:
+                    self.slides_full_source = fp.read()
+                return
+
+        if self.url.endswith("/download"):
+            url = self.url
+        else:
+            url = f'{self.url.rstrip("/").rstrip("#")}/download'
+
+        print(f"Downloading {url}")
+        res = requests.get(url)
+        if not res.status_code == 200:
+            msg = f"unexpected status code for url {url}"
+            raise requests.HTTPError(msg)
+
+        print(f"Saving file: {self.slides_full_source_fpath}")
+        with open(self.slides_full_source_fpath, "wb") as fp:
+            fp.write(res.content)
+
+        self.slides_full_source = res.content.decode("utf8")
+
+    def split_into_slides(self):
+
+        self.slide_src_list = self.slides_full_source.split("\n---\n")
+
+        # ignore optional slideOptions
+        if "\nslideOptions:\n" in self.slide_src_list[0]:
+            self.slide_src_list.pop(0)
+
+    def extract_texts_from_special_comments(self):
+
+        compiled_re = re.compile(r"\<!--f[0-9]*\s*(.*?)/--\>", re.DOTALL)
+        self.fragment_texts = []
+
+        for slide_src in self.slide_src_list:
+            slide_fragment_texts = compiled_re.findall(slide_src)
+            slide_fragment_texts = [elt.strip() for elt in slide_fragment_texts]
+            self.fragment_texts.append(slide_fragment_texts)
+
+    def write_fragment_texts(self):
+
+        # step 1: flatten the list
+        texts = []
+        for slide_fragments in self.fragment_texts:
+            for fragment_text in slide_fragments:
+                texts.append(fragment_text.strip())
+
+        # step 2: write to file
+        with open(self.target_fpath, "w") as fp:
+            fp.write("\n\n---\n\n".join(texts))
+            fp.write("\n")
 
 
 def extract_text(args):
 
     te = TextExtractor(args)
     te.perform_text_extraction()
+    IPS(print_tb=False)

@@ -1,2 +1,5 @@
 noisereduce
 pyaudio
+PyQt5
+ipydex
+markdown

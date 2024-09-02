@@ -67,7 +67,7 @@ class ImageTextAudioTool(QMainWindow):
 
     def initUI(self):
         self.setWindowTitle('Image Text Audio Tool')
-        self.setGeometry(100, 100, 1200, 800)
+        self.setGeometry(100, 100, 1200, 1000)
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -98,7 +98,7 @@ class ImageTextAudioTool(QMainWindow):
 
         # Load image
         pixmap = QPixmap(image_path)
-        self.image_label.setPixmap(pixmap.scaled(600, 600, Qt.KeepAspectRatio))
+        self.image_label.setPixmap(pixmap.scaled(1000, 1000, Qt.KeepAspectRatio))
 
         # render markdown
         html_content = markdown.markdown(self.md_snippets[self.current_index])

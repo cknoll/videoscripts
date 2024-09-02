@@ -29,8 +29,8 @@ class SlideCaptureManager:
         production = 1
         if production:
             chrome_options.add_argument("--headless")
-            # chrome_options.add_argument("--window-size=1920,1080")
-            chrome_options.add_argument("--window-size=1800,1250")
+            chrome_options.add_argument("--window-size=1920,1080")
+            # chrome_options.add_argument("--window-size=1800,1250")
         else:
             # useful during development
             chrome_options.add_argument("--window-size=1000,600")
@@ -49,36 +49,42 @@ class SlideCaptureManager:
         time.sleep(1)  # Wait for transition
 
         slide_count = 1
-        fragment_count = 0
-        last_slide = False
+        fragment_count = 1
+        last_slide_flag = False
+        image_count = 0
+
+        last_slide_number = "1"
 
         while True:
             # Capture the current slide
+            image_count += 1
             png = driver.get_screenshot_as_png()
             img = Image.open(io.BytesIO(png))
             fpath = pjoin(self.image_dir, f"slide_{slide_count:03d}_fragment_{fragment_count:03d}.png")
             img.save(fpath)
             print(f"Screenshot written: {fpath}")
-            if last_slide:
+            if last_slide_flag:
                 break
 
-            # Check for fragments
-            fragments = driver.find_elements(By.CLASS_NAME, "fragment")
-            visible_fragments = [f for f in fragments if "visible" in f.get_attribute("class")]
+            # Check for fragments (does not work reliably)
+            # fragments = driver.find_elements(By.CLASS_NAME, "fragment")
+            # visible_fragments = [f for f in fragments if "visible" in f.get_attribute("class")]
 
-            if len(visible_fragments) < len(fragments):
+            driver.find_element(By.TAG_NAME, "body").send_keys(" ")
+            new_slide_number = driver.find_elements(By.CLASS_NAME, "slide-number")[0].text
+
+            if new_slide_number == last_slide_number:
                 # More fragments to reveal
-                driver.find_element(By.TAG_NAME, "body").send_keys(" ")
                 fragment_count += 1
             else:
-                # Move to next slide
-                driver.find_element(By.TAG_NAME, "body").send_keys("n")
+                fragment_count = 1
                 slide_count += 1
-                fragment_count = 0
+
+            last_slide_number = new_slide_number
 
             # Check if we've reached the end of the presentation
             if "enabled" not in driver.find_element(By.CLASS_NAME, "navigate-right").get_attribute("class"):
-                last_slide = True
+                last_slide_flag = True
 
             time.sleep(0.5)  # Wait for transition
 

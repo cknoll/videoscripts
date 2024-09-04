@@ -7,6 +7,13 @@ The length of the respective wav file determines how long each image is shown in
 I want to achieve this either via command line or via a python script.
 
 
+## Installation
+
+- Preparation on Linux:
+    - `sudo apt install build-essential portaudio19-dev`
+- `pip install -e .`
+
+
 ## Usage
 
 ### Slide Collector

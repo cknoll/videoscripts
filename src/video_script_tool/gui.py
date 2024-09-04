@@ -3,6 +3,7 @@ import os
 import glob
 import threading
 import time
+import contextlib
 
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QTextBrowser, QVBoxLayout, QPushButton, QWidget
 from PyQt5.QtGui import QPixmap, QPainter, QColor
@@ -11,10 +12,22 @@ import markdown
 import pyaudio
 import wave
 
+from .util import bred, PyaudioStdoutWrapper
+
 
 from ipydex import IPS
 
 pjoin = os.path.join
+
+# to mute logging noise for pyaudio
+
+
+@contextlib.contextmanager
+def suppress_output():
+    with open(os.devnull, 'w') as fnull:
+        with contextlib.redirect_stdout(fnull), contextlib.redirect_stderr(fnull):
+            yield
+
 
 class ColorCircle(QWidget):
     def __init__(self, color):
@@ -43,8 +56,9 @@ class ImageTextAudioTool(QMainWindow):
         self.audio_frames = None
         self.load_data()
 
-        # setup audio
-        self.audio = pyaudio.PyAudio()
+        # setup audio (without logging noise)
+        with PyaudioStdoutWrapper() as audio:
+            self.audio = audio
         self.stream = None
 
         self.initUI()
@@ -63,7 +77,18 @@ class ImageTextAudioTool(QMainWindow):
         self.md_snippets = txt_data.split("\n---\n")
 
         assert len(self.md_snippets) > 0
-        assert len(self.md_snippets) == len(self.image_files)
+
+        # check if there are texts for every image and vice versa
+        minval = min(len(self.image_files), len(self.md_snippets))
+        if len(self.md_snippets) != len(self.image_files):
+            print(bred("Caution:"))
+            print(f"number of text snippets: {len(self.md_snippets)}")
+            print(f"number of image files:   {len(self.image_files)}\n")
+            print("Skipping the leftover")
+
+            self.md_snippets = self.md_snippets[:minval]
+            self.image_files = self.image_files[:minval]
+
 
     def initUI(self):
         self.setWindowTitle('Image Text Audio Tool')
@@ -133,7 +158,7 @@ class ImageTextAudioTool(QMainWindow):
             self.start_recording()
 
     def keyPressEvent(self, event):
-        print("key pressed", event.key())
+        # print("key pressed", event.key())
         if event.key() == Qt.Key_W:
             self.start_recording()
         elif event.key() in (Qt.Key_Space, Qt.Key_D):
@@ -152,7 +177,8 @@ class ImageTextAudioTool(QMainWindow):
     def recording_callback(self, in_data, frame_count, time_info, status):
 
         if (len(self.audio_frames) % 100) == 0:
-              print(f"callback: {len(self.audio_frames)} frames")
+            pass
+            # print(f"callback: {len(self.audio_frames)} frames")
         self.audio_frames.append(in_data)
         return (in_data, pyaudio.paContinue)
 

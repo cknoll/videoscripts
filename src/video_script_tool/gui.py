@@ -10,10 +10,10 @@ import time
 
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QLabel, QTextBrowser, QVBoxLayout, QPushButton, QWidget, QTextEdit, QGridLayout,
-    QAction, QDialog, QTableWidget, QTableWidgetItem, QHBoxLayout,
+    QAction, QMessageBox, QDialog, QTableWidget, QTableWidgetItem, QHBoxLayout,
 )
 from PyQt5.QtGui import QPixmap, QPainter, QColor, QKeySequence, QTextCursor
-from PyQt5.QtCore import Qt, QRect, QTimer
+from PyQt5.QtCore import Qt
 import markdown
 import pyaudio
 import wave
@@ -67,8 +67,16 @@ class ImageTextAudioTool(QMainWindow):
         self.is_recording = False
         self.audio_frames = None
         self.cursor_positions = defaultdict(lambda: 0)
+
+        # for shortcuts and help dialog
         self.anonymous_actions = []
         self.shortcuts: list[tuple[str]] = []
+
+        # split and join md snippets by this string
+        self.md_snippet_separator = "\n---\n"
+
+        self.src_fname = "all_texts.md"
+
         self.load_data()
 
         # setup audio (without logging noise)
@@ -78,12 +86,6 @@ class ImageTextAudioTool(QMainWindow):
 
         self.initUI()
 
-        if 0:
-            self.debug_timer = QTimer()
-            # self.timer.setSingleShot(True)  # Set the timer to single shot mode
-            self.debug_timer.timeout.connect(self.debug_output)
-            self.debug_timer.start(2000)
-
     def load_data(self):
 
         pattern_img = pjoin(self.project_dir, "images", "*.png")
@@ -92,10 +94,11 @@ class ImageTextAudioTool(QMainWindow):
 
         # load texts
 
-        txt_fpath = pjoin(self.project_dir, "all_texts.md")
+        txt_fpath = pjoin(self.project_dir, self.src_fname)
         with open(txt_fpath, "r") as fp:
             txt_data = fp.read()
-        self.md_snippets = txt_data.split("\n---\n")
+
+        self.md_snippets = txt_data.split(self.md_snippet_separator)
 
         assert len(self.md_snippets) > 0
 
@@ -112,7 +115,7 @@ class ImageTextAudioTool(QMainWindow):
 
     def initUI(self):
         self.setWindowTitle('Image Text Audio Tool')
-        self.setGeometry(100, 100, 1200, 1000)
+        self.setGeometry(600, 100, 1200, 1000)
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -141,6 +144,11 @@ class ImageTextAudioTool(QMainWindow):
         self.save_button = QPushButton("Save")
         button_area_layout.addWidget(self.save_button)
         self.save_button.clicked.connect(self.save_edited_content)
+
+        # reload button
+        self.reload_button = QPushButton("Reload")
+        button_area_layout.addWidget(self.reload_button)
+        self.reload_button.clicked.connect(self.reload_content)
 
         # help button
         self.help_button = QPushButton("Help (F1)")
@@ -268,9 +276,21 @@ class ImageTextAudioTool(QMainWindow):
 
         self.main_text_field.setText(md_src)
 
+    def reload_content(self):
+        self.main_text_field.setText(self.md_snippets[self.current_index])
+
     def save_edited_content(self):
-        print("not yet implemented")
-        self.main_text_field.setFocus()
+        content = self.main_text_field.toPlainText()
+        if content == self.md_snippets[self.current_index]:
+            print("nothing changed")
+            return
+
+        # TODO: make backup of old file?
+        self.md_snippets[self.current_index] = content
+        txt_fpath = pjoin(self.project_dir, self.src_fname)
+        with open(txt_fpath, "w") as fp:
+            fp.write(self.md_snippet_separator.join(self.md_snippets))
+
 
     def toggle_edit_mode(self):
 
@@ -282,7 +302,7 @@ class ImageTextAudioTool(QMainWindow):
             self.main_text_field.hide()
             self.main_text_browser.show()
             self.cursor_positions[self.current_index] = self.main_text_field.textCursor().position()
-            print(self.cursor_positions[self.current_index])
+            # print(self.cursor_positions[self.current_index])
 
         else:
             # Switch to edit mode
@@ -290,31 +310,30 @@ class ImageTextAudioTool(QMainWindow):
             self.main_text_browser.hide()
             self.main_text_field.show()
 
-            cursor = self.main_text_field.textCursor()
-            cursor.setPosition(self.cursor_positions[self.current_index])
-            self.main_text_field.moveCursor(QTextCursor.End, QTextCursor.MoveAnchor)
+            # moving the cursor position to the saved place does not yet work
+            # -> not so important
+            # cursor = self.main_text_field.textCursor()
+            # cursor.setPosition(self.cursor_positions[self.current_index])
+            # self.main_text_field.moveCursor(QTextCursor.End, QTextCursor.MoveAnchor)
 
-            if 0:
-                self.debug_timer = QTimer()
-                self.debug_timer.setSingleShot(True)  # Set the timer to single shot mode
-                self.debug_timer.timeout.connect(self.debug_output)
-                self.debug_timer.start(2000)
-
-            # self.main_text_browser.setFocus()
             # self.main_text_field.setCursor(cursor)
 
         self.edit_mode = not self.edit_mode  # Toggle mode
 
-    def debug_output(self):
-        focused_widget = QApplication.focusWidget()
-        print(f"{focused_widget.__class__.__name__} has focus.")
-        # print("timer worked")
-        self.main_text_browser.setFocus()
-        focused_widget = QApplication.focusWidget()
-        if hasattr(focused_widget, "text"):
-            print(f"now: {focused_widget.__class__.__name__} has focus. {focused_widget.text()}")
+    def assert_no_unsaved_changes(self):
+        content = self.main_text_field.toPlainText()
+        if content != self.md_snippets[self.current_index]:
+            # error_dialog = QtWidgets.QErrorMessage()
+            msg = "There are unsaved changes to the text. Save or reload."
+            QMessageBox.information(None, "Information", msg)
+            return False
+        return True
 
     def _forward_or_backward(self, value):
+
+        if not self.assert_no_unsaved_changes():
+            return
+
         was_recording = False
         if self.stream is not None:
             self.stop_recording_and_save()
@@ -361,6 +380,10 @@ class ImageTextAudioTool(QMainWindow):
         return (in_data, pyaudio.paContinue)
 
     def start_recording(self):
+
+        if not self.assert_no_unsaved_changes():
+            return
+
         self.recording_symbol.setColor('red')
         self.audio_frames = []
         self.stream = self.audio.open(format=pyaudio.paInt16,

@@ -5,7 +5,9 @@ import threading
 import time
 import contextlib
 
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QTextBrowser, QVBoxLayout, QPushButton, QWidget
+from PyQt5.QtWidgets import (
+    QApplication, QMainWindow, QLabel, QTextBrowser, QVBoxLayout, QPushButton, QWidget, QTextEdit, QGridLayout,
+)
 from PyQt5.QtGui import QPixmap, QPainter, QColor
 from PyQt5.QtCore import Qt, QRect
 import markdown
@@ -50,6 +52,7 @@ class ImageTextAudioTool(QMainWindow):
         super().__init__()
         self.project_dir = args.project_dir
         self.audio_path = pjoin(self.project_dir, "audio")
+        self.edit_mode = False
         os.makedirs(self.audio_path, exist_ok=True)
         self.current_index = 0
         self.is_recording = False
@@ -89,31 +92,48 @@ class ImageTextAudioTool(QMainWindow):
             self.md_snippets = self.md_snippets[:minval]
             self.image_files = self.image_files[:minval]
 
-
     def initUI(self):
         self.setWindowTitle('Image Text Audio Tool')
         self.setGeometry(100, 100, 1200, 1000)
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
-        layout = QVBoxLayout(central_widget)
+        layout = QGridLayout(central_widget)
 
-        self.text_browser = QTextBrowser(self)
-        layout.addWidget(self.text_browser)
+        button_area_layout = QVBoxLayout()
+        button_area_widget = QWidget()
+        button_area_widget.setLayout(button_area_layout)
+
+        self.main_text_browser = QTextBrowser(self)
+        self.main_text_browser.setFixedSize(1000, 300)
+        layout.addWidget(self.main_text_browser, 0, 0, alignment=Qt.AlignCenter)
+
+        self.main_text_field = QTextEdit(self)
+        self.main_text_field.setFixedSize(500, 300)
+        layout.addWidget(self.main_text_field, 0, 0, alignment=Qt.AlignCenter)
+        self.main_text_field.hide()
+
+        self.edit_mode_button = QPushButton("edit")
+        self.edit_mode_button.clicked.connect(self.toggle_edit_mode)
+        layout.addWidget(button_area_widget, 0, 1)
+        button_area_layout.addWidget(self.edit_mode_button)
+
+        self.save_button = QPushButton("save")
+        button_area_layout.addWidget(self.save_button)
 
         self.image_label = QLabel(self)
         self.image_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self.image_label)
+        layout.addWidget(self.image_label, 1, 0)
 
         self.info_label = QLabel(' test ', self)
         self.info_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self.info_label)
+        layout.addWidget(self.info_label, 2, 0)
 
         self.circle = ColorCircle('gray')
         self.circle.setFixedSize(20, 20)
-        layout.addWidget(self.circle, alignment=Qt.AlignCenter)
+        layout.addWidget(self.circle, 1, 1, alignment=Qt.AlignCenter)
         self.help_label = QLabel("W: start recording; S: Stop recording; D: go forward; A: go back", self)
-        layout.addWidget(self.help_label)
+        layout.addWidget(self.help_label, 3, 0)
 
         self.load_content()
         print("init done")
@@ -125,12 +145,8 @@ class ImageTextAudioTool(QMainWindow):
         pixmap = QPixmap(image_path)
         self.image_label.setPixmap(pixmap.scaled(1000, 1000, Qt.KeepAspectRatio))
 
-        # render markdown
-        html_content = markdown.markdown(self.md_snippets[self.current_index])
-
-        style = "font-size: x-large; text-align:center;"
-        outer_html = f'<div style="{style}">{html_content}</div>'
-        self.text_browser.setHtml(outer_html)
+        self.render_md_to_html(self.md_snippets[self.current_index])
+        self.info_label.setText(f"{self.current_index} {self.get_current_image_basename()}")
 
 
     def change_index_by(self, value):
@@ -142,7 +158,34 @@ class ImageTextAudioTool(QMainWindow):
         if self.current_index <= 0:
             self.current_index = 0
 
-        self.info_label.setText(f"{self.current_index} {self.get_current_image_basename()}")
+    def render_md_to_html(self, md_src):
+
+        # render markdown
+        html_content = markdown.markdown(md_src)
+
+        style = "font-size: x-large; text-align:center;"
+        outer_html = f'<div style="{style}">{html_content}</div>'
+        self.main_text_browser.setHtml(outer_html)
+
+        self.main_text_field.setText(md_src)
+
+    def toggle_edit_mode(self):
+
+        # print(f"{self.edit_mode=}")
+        if self.edit_mode:
+            # Switch to render mode
+            self.edit_mode_button.setText("edit")
+            self.render_md_to_html(self.main_text_field.toPlainText())
+            self.main_text_field.hide()
+            self.main_text_browser.show()
+
+        else:
+            # Switch to edit mode
+            self.edit_mode_button.setText("render")
+            self.main_text_browser.hide()
+            self.main_text_field.show()
+
+        self.edit_mode = not self.edit_mode  # Toggle mode
 
     def _forward_or_backward(self, value):
         was_recording = False

@@ -8,7 +8,7 @@ import contextlib
 
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QLabel, QTextBrowser, QVBoxLayout, QPushButton, QWidget, QTextEdit, QGridLayout,
-    QAction,
+    QAction, QDialog, QTableWidget, QTableWidgetItem, QHBoxLayout
 )
 from PyQt5.QtGui import QPixmap, QPainter, QColor, QKeySequence
 from PyQt5.QtCore import Qt, QRect
@@ -59,6 +59,7 @@ class ImageTextAudioTool(QMainWindow):
         self.is_recording = False
         self.audio_frames = None
         self.anonymous_actions = []
+        self.shortcuts: list[tuple[str]] = []
         self.load_data()
 
         # setup audio (without logging noise)
@@ -67,6 +68,7 @@ class ImageTextAudioTool(QMainWindow):
         self.stream = None
 
         self.initUI()
+        self.show_help()
 
     def load_data(self):
 
@@ -116,21 +118,26 @@ class ImageTextAudioTool(QMainWindow):
         self.main_text_field.hide()
 
         # edit mode (button and action)
-        self.edit_mode_button = QPushButton("edit")
+        self.edit_mode_button = QPushButton("Edit")
         self.edit_mode_button.clicked.connect(self.toggle_edit_mode)
         layout.addWidget(button_area_widget, 0, 1)
         button_area_layout.addWidget(self.edit_mode_button)
 
-        self.edit_mode_action = QAction("Edit Mode Action", self)
-        self.edit_mode_action.triggered.connect(self.toggle_edit_mode)
+        # self.edit_mode_action = QAction("Edit Mode Action", self)
+        # self.edit_mode_action.triggered.connect(self.toggle_edit_mode)
 
         # save (button and  action)
-        self.save_button = QPushButton("save")
+        self.save_button = QPushButton("Save")
         button_area_layout.addWidget(self.save_button)
         self.save_button.clicked.connect(self.save_edited_content)
 
-        self.save_action = QAction("Save Action", self)
-        self.save_action.triggered.connect(self.save_edited_content)
+        # self.save_action = QAction("Save Action", self)
+        # self.save_action.triggered.connect(self.save_edited_content)
+
+        # help button
+        self.help_button = QPushButton("Help (F1)")
+        self.help_button.clicked.connect(self.show_help)
+        button_area_layout.addWidget(self.help_button)
 
 
         # widget to display the image
@@ -156,19 +163,74 @@ class ImageTextAudioTool(QMainWindow):
         print("init done")
 
     def define_shortcuts(self):
-        self.connect_key_sequence_to_method(QKeySequence("F2"), self.start_recording)
-        self.connect_key_sequence_to_method(QKeySequence("Space"), self.stop_recording_and_save)
-        self.connect_key_sequence_to_method(QKeySequence("PgDown"), self.forward1)
-        self.connect_key_sequence_to_method(QKeySequence("PgUp"), self.backward1)
-        self.connect_key_sequence_to_method(QKeySequence("Ctrl+PgDown"), self.forward10)
-        self.connect_key_sequence_to_method(QKeySequence("Ctrl+PgUp"), self.backward10)
+        self.connect_key_sequence_to_method("F1", "show this help dialog", self.show_help)
+        self.connect_key_sequence_to_method("F2", "start recording", self.start_recording)
+        self.connect_key_sequence_to_method("Space", "stop and save recording", self.stop_recording_and_save)
+        self.connect_key_sequence_to_method("PgDown", "forward", self.forward1)
+        self.connect_key_sequence_to_method("PgUp", "backward", self.backward1)
+        self.connect_key_sequence_to_method("Ctrl+PgDown", "forward 10 steps", self.forward10)
+        self.connect_key_sequence_to_method("Ctrl+PgUp", "backward 10 steps", self.backward10)
+        self.connect_key_sequence_to_method("Ctrl+E", "toggle edit mode", self.toggle_edit_mode)
+        self.connect_key_sequence_to_method("Ctrl+S", "save text", self.save_edited_content)
+        self.connect_key_sequence_to_method("Ctrl+Q", "quit", self.close)
 
-        self.connect_key_sequence_to_method(QKeySequence("Ctrl+E"), self.toggle_edit_mode)
-        self.connect_key_sequence_to_method(QKeySequence("Ctrl+S"), self.save_edited_content)
-        self.connect_key_sequence_to_method(QKeySequence("Ctrl+Q"), self.close)
+        # self.edit_mode_action.setShortcut(QKeySequence("Ctrl+P"))
+        # self.save_action.setShortcut(QKeySequence("Ctrl+L"))
 
-        self.edit_mode_action.setShortcut(QKeySequence("Ctrl+P"))
-        self.save_action.setShortcut(QKeySequence("Ctrl+L"))
+    def show_help(self):
+
+        table_data = self.shortcuts[:-3]
+
+        class HelpDialog(QDialog):
+            def __init__(self):
+                super().__init__()
+                self.setWindowTitle("Help")
+                # self.setGeometry(100, 100, 200, 600)
+
+                # Create a QVBoxLayout
+                layout = QVBoxLayout()
+
+                self.table_widget = QTableWidget(len(table_data), 2)  # 3 rows and 2 columns
+                self.table_widget.setHorizontalHeaderLabels(["Keys", "Action"])
+
+                for row, (code, text) in enumerate(table_data):
+                    self.table_widget.setItem(row, 0, QTableWidgetItem(code))
+                    self.table_widget.setItem(row, 1, QTableWidgetItem(text))
+
+                    # Set the left column (code) to be monospaced font
+                    item_code = self.table_widget.item(row, 0)
+                    # item_code.setFont(item_code.font().setFamily("Courier New"))
+
+                self.table_widget.resizeColumnsToContents()
+                # Add the table widget to the layout
+                layout.addWidget(self.table_widget)
+                ok_button = QPushButton("OK")
+                ok_button.clicked.connect(self.accept)
+
+                button_layout = QHBoxLayout()
+                button_layout.addStretch()  # Add stretchable space
+                button_layout.addWidget(ok_button)
+
+                # Add the button layout to the main layout
+                layout.addLayout(button_layout)
+
+                # Set the layout for the dialog
+                self.setLayout(layout)
+
+                # Adjust the size of the dialog to fit the content
+                # self.resize(self.table_widget.sizeHint())
+                self.adapt_size()
+
+            def adapt_size(self):
+                # Get overall size hint
+                self.size_hint = self.table_widget.sizeHint()
+                # Get specific column and row sizes
+                self.total_width = sum(self.table_widget.columnWidth(i) for i in range(self.table_widget.columnCount()))
+                self.total_height = sum(self.table_widget.rowHeight(i) for i in range(self.table_widget.rowCount()))
+                self.resize(self.total_width+45, self.total_height + 80)
+
+        help_dialog = HelpDialog()
+        help_dialog.exec_()
 
     def load_content(self):
         image_path = self.image_files[self.current_index]
@@ -235,7 +297,11 @@ class ImageTextAudioTool(QMainWindow):
             time.sleep(0.1)
             self.start_recording()
 
-    def connect_key_sequence_to_method(self, ks: QKeySequence, method: callable):
+    def connect_key_sequence_to_method(self, ks: str, action_label: str, method: callable):
+
+        assert isinstance(ks, str)
+        self.shortcuts.append((ks, action_label))
+
         i = len(self.anonymous_actions)
         action = QAction(f"Action {i}", self)
         self.anonymous_actions.append(action)

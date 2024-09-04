@@ -52,6 +52,7 @@ def extract_texts():
     cache_group = parser.add_mutually_exclusive_group()
     cache_group.add_argument("--force-reload", "-fr", help="force that a cached version is discarded", action="store_true")
     cache_group.add_argument("--force-cache", "-fc", help="force that a cached version is used", action="store_true")
+    cache_group.add_argument("--force-source", "-fs", help="force that a specific file is used (no download)", default=None)
 
     args = parser.parse_args()
 

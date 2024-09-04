@@ -8,8 +8,9 @@
     - [x] select content of special comments
     - [x] smart caching
     - [x] write `all_texts.md`
+    - [x] make fragment text extraction more robust (in w.r.t. fragments per slide)
 - [.] make it possible to easily create multiple audio recordings (one key -> save running recording + start new recording)
-    - [x] implement imple gui
+    - [x] implement simple gui
     - [x] make audio recording work
     - [x] improve gui
 - [ ] Extract text for each fragment to separate text-file

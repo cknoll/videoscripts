@@ -1,6 +1,7 @@
 import subprocess
 import os
 from pyaudio import PyAudio
+from collections import defaultdict
 
 
 from colorama import Style, Fore
@@ -65,6 +66,28 @@ class PyaudioStdoutWrapper:
         # Close all file descriptors
         for fd in self.null_fds + self.save_fds:
             os.close(fd)
+
+
+def get_image_fragment_numbers(image_files):
+
+    slide_fragment_numbers = defaultdict(lambda : 0)
+
+    for fpath in image_files:
+        fname = os.path.split(fpath)[1]
+
+        # transform "slide_027_fragment_002.png" -> "027_002"
+        assert fname.startswith("slide_")
+        assert fname.endswith(".png")
+        assert "_fragment_" in fname
+
+        reduced_string = fname[len("slide_"):-4].replace("_fragment_", "_")
+        slide, fragment = reduced_string.split("_")
+
+        slide_fragment_numbers[slide] += 1
+
+    return slide_fragment_numbers
+
+
 
 
 def bright(txt):

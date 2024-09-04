@@ -126,11 +126,11 @@ class ImageTextAudioTool(QMainWindow):
         button_area_widget.setLayout(button_area_layout)
 
         self.main_text_browser = QTextBrowser(self)
-        self.main_text_browser.setFixedSize(1000, 300)
+        self.main_text_browser.setFixedSize(1200, 200)
         layout.addWidget(self.main_text_browser, 0, 0, alignment=Qt.AlignCenter)
 
         self.main_text_field = FocussingTextEdit(self)
-        self.main_text_field.setFixedSize(500, 300)
+        self.main_text_field.setFixedSize(800, 200)
         layout.addWidget(self.main_text_field, 0, 0, alignment=Qt.AlignCenter)
         self.main_text_field.hide()
 
@@ -155,23 +155,20 @@ class ImageTextAudioTool(QMainWindow):
         self.help_button.clicked.connect(self.show_help)
         button_area_layout.addWidget(self.help_button)
 
+        # display information about the image
+        self.info_label = QLabel('', self)
+        self.info_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.info_label, 1, 0)
 
         # widget to display the image
         self.image_label = QLabel(self)
         self.image_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self.image_label, 1, 0)
-
-        # display information about the image
-        self.info_label = QLabel('', self)
-        self.info_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self.info_label, 2, 0)
+        layout.addWidget(self.image_label, 2, 0, 2, 1, alignment=Qt.AlignCenter)
 
         # display information about the recording state
         self.recording_symbol = ColorCircle('gray')
         self.recording_symbol.setFixedSize(20, 20)
-        layout.addWidget(self.recording_symbol, 1, 1, alignment=Qt.AlignCenter)
-        self.help_label = QLabel("F2: start recording; Space: Stop recording; →: go forward; ←: go back", self)
-        layout.addWidget(self.help_label, 3, 0)
+        button_area_layout.addWidget(self.recording_symbol, alignment=Qt.AlignCenter)
 
         self.define_shortcuts()
 
@@ -250,7 +247,7 @@ class ImageTextAudioTool(QMainWindow):
 
         # Load image
         pixmap = QPixmap(image_path)
-        self.image_label.setPixmap(pixmap.scaled(1000, 1000, Qt.KeepAspectRatio))
+        self.image_label.setPixmap(pixmap.scaled(1200, 1200, Qt.KeepAspectRatio))
 
         self.render_md_to_html(self.md_snippets[self.current_index])
         self.info_label.setText(f"{self.current_index} {self.get_current_image_basename()}")
@@ -270,7 +267,7 @@ class ImageTextAudioTool(QMainWindow):
         # render markdown
         html_content = markdown.markdown(md_src)
 
-        style = "font-size: x-large; text-align:center;"
+        style = "font-size: large; text-align:center;"
         outer_html = f'<div style="{style}">{html_content}</div>'
         self.main_text_browser.setHtml(outer_html)
 
@@ -282,7 +279,7 @@ class ImageTextAudioTool(QMainWindow):
     def save_edited_content(self):
         content = self.main_text_field.toPlainText()
         if content == self.md_snippets[self.current_index]:
-            print("nothing changed")
+            print("text content was not changed")
             return
 
         # TODO: make backup of old file?
@@ -408,7 +405,7 @@ class ImageTextAudioTool(QMainWindow):
             self.stream = None
             threading.Thread(target=self._save_audio).start()
         else:
-            print("stream is None. Nothing to save")
+            print("No audio stream to save")
 
     # def stop_recording(self):
     #     print("stop recording for", self.image_files[self.current_index])

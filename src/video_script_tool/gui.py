@@ -9,8 +9,21 @@ import time
 
 
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QLabel, QTextBrowser, QVBoxLayout, QPushButton, QWidget, QTextEdit, QGridLayout,
-    QAction, QMessageBox, QDialog, QTableWidget, QTableWidgetItem, QHBoxLayout,
+    QApplication,
+    QMainWindow,
+    QLabel,
+    QTextBrowser,
+    QVBoxLayout,
+    QPushButton,
+    QWidget,
+    QTextEdit,
+    QGridLayout,
+    QAction,
+    QMessageBox,
+    QDialog,
+    QTableWidget,
+    QTableWidgetItem,
+    QHBoxLayout,
 )
 from PyQt5.QtGui import QPixmap, QPainter, QColor, QKeySequence, QTextCursor
 from PyQt5.QtCore import Qt
@@ -30,9 +43,10 @@ pjoin = os.path.join
 
 @contextlib.contextmanager
 def suppress_output():
-    with open(os.devnull, 'w') as fnull:
+    with open(os.devnull, "w") as fnull:
         with contextlib.redirect_stdout(fnull), contextlib.redirect_stderr(fnull):
             yield
+
 
 class ColorCircle(QWidget):
     def __init__(self, color):
@@ -114,7 +128,7 @@ class ImageTextAudioTool(QMainWindow):
             self.image_files = self.image_files[:minval]
 
     def initUI(self):
-        self.setWindowTitle('Image Text Audio Tool')
+        self.setWindowTitle("Image Text Audio Tool")
         self.setGeometry(600, 100, 1200, 1000)
 
         central_widget = QWidget()
@@ -156,7 +170,7 @@ class ImageTextAudioTool(QMainWindow):
         button_area_layout.addWidget(self.help_button)
 
         # display information about the image
-        self.info_label = QLabel('', self)
+        self.info_label = QLabel("", self)
         self.info_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.info_label, 1, 0)
 
@@ -166,7 +180,7 @@ class ImageTextAudioTool(QMainWindow):
         layout.addWidget(self.image_label, 2, 0, 2, 1, alignment=Qt.AlignCenter)
 
         # display information about the recording state
-        self.recording_symbol = ColorCircle('gray')
+        self.recording_symbol = ColorCircle("gray")
         self.recording_symbol.setFixedSize(20, 20)
         button_area_layout.addWidget(self.recording_symbol, alignment=Qt.AlignCenter)
 
@@ -237,7 +251,7 @@ class ImageTextAudioTool(QMainWindow):
                 # Get specific column and row sizes
                 self.total_width = sum(self.table_widget.columnWidth(i) for i in range(self.table_widget.columnCount()))
                 self.total_height = sum(self.table_widget.rowHeight(i) for i in range(self.table_widget.rowCount()))
-                self.resize(self.total_width+45, self.total_height + 80)
+                self.resize(self.total_width + 45, self.total_height + 80)
 
         help_dialog = HelpDialog()
         help_dialog.exec_()
@@ -251,7 +265,6 @@ class ImageTextAudioTool(QMainWindow):
 
         self.render_md_to_html(self.md_snippets[self.current_index])
         self.info_label.setText(f"{self.current_index} {self.get_current_image_basename()}")
-
 
     def change_index_by(self, value):
         assert value in (-1, -10, 1, 10)
@@ -287,7 +300,6 @@ class ImageTextAudioTool(QMainWindow):
         txt_fpath = pjoin(self.project_dir, self.src_fname)
         with open(txt_fpath, "w") as fp:
             fp.write(self.md_snippet_separator.join(self.md_snippets))
-
 
     def toggle_edit_mode(self):
 
@@ -355,7 +367,6 @@ class ImageTextAudioTool(QMainWindow):
         action.triggered.connect(method)
         self.addAction(action)
 
-
     def forward1(self):
         self._forward_or_backward(value=1)
 
@@ -381,24 +392,20 @@ class ImageTextAudioTool(QMainWindow):
         if not self.assert_no_unsaved_changes():
             return
 
-        self.recording_symbol.setColor('red')
+        self.recording_symbol.setColor("red")
         self.audio_frames = []
-        self.stream = self.audio.open(format=pyaudio.paInt16,
-                                      channels=1,
-                                      rate=44100,
-                                      input=True,
-                                      frames_per_buffer=1024,
-                                      stream_callback=self.recording_callback)
+        self.stream = self.audio.open(
+            format=pyaudio.paInt16,
+            channels=1,
+            rate=44100,
+            input=True,
+            frames_per_buffer=1024,
+            stream_callback=self.recording_callback,
+        )
         self.stream.start_stream()
 
-    # def start_recording(self):
-    #     print("start recording for", self.image_files[self.current_index])
-    #     self.is_recording = True
-    #     self.audio_frames = []
-
-
     def stop_recording_and_save(self):
-        self.recording_symbol.setColor('gray')
+        self.recording_symbol.setColor("gray")
         if self.stream:
             self.stream.stop_stream()
             self.stream.close()
@@ -406,10 +413,6 @@ class ImageTextAudioTool(QMainWindow):
             threading.Thread(target=self._save_audio).start()
         else:
             print("No audio stream to save")
-
-    # def stop_recording(self):
-    #     print("stop recording for", self.image_files[self.current_index])
-    #     self.is_recording = False
 
     def get_current_image_basename(self):
         basename = os.path.splitext(os.path.split(self.image_files[self.current_index])[1])[0]
@@ -419,7 +422,6 @@ class ImageTextAudioTool(QMainWindow):
         """
         this is called by stop_recording
         """
-
 
         fpath = pjoin(self.audio_path, f"{self.get_current_image_basename()}.wav")
 
@@ -434,13 +436,12 @@ class ImageTextAudioTool(QMainWindow):
 
         print(f"saving audio:    {af_len} frames    {fpath}")
 
-        with wave.open(fpath, 'wb') as wf:
+        with wave.open(fpath, "wb") as wf:
             wf.setnchannels(1)
             wf.setsampwidth(self.audio.get_sample_size(pyaudio.paInt16))
             wf.setframerate(44100)
-            wf.writeframes(b''.join(self.audio_frames))
+            wf.writeframes(b"".join(self.audio_frames))
         # wf.close()
-
 
     def closeEvent(self, event):
         """

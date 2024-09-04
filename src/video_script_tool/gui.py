@@ -5,10 +5,12 @@ import threading
 import time
 import contextlib
 
+
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QLabel, QTextBrowser, QVBoxLayout, QPushButton, QWidget, QTextEdit, QGridLayout,
+    QAction,
 )
-from PyQt5.QtGui import QPixmap, QPainter, QColor
+from PyQt5.QtGui import QPixmap, QPainter, QColor, QKeySequence
 from PyQt5.QtCore import Qt, QRect
 import markdown
 import pyaudio
@@ -29,7 +31,6 @@ def suppress_output():
     with open(os.devnull, 'w') as fnull:
         with contextlib.redirect_stdout(fnull), contextlib.redirect_stderr(fnull):
             yield
-
 
 class ColorCircle(QWidget):
     def __init__(self, color):
@@ -57,6 +58,7 @@ class ImageTextAudioTool(QMainWindow):
         self.current_index = 0
         self.is_recording = False
         self.audio_frames = None
+        self.anonymous_actions = []
         self.load_data()
 
         # setup audio (without logging noise)
@@ -113,30 +115,60 @@ class ImageTextAudioTool(QMainWindow):
         layout.addWidget(self.main_text_field, 0, 0, alignment=Qt.AlignCenter)
         self.main_text_field.hide()
 
+        # edit mode (button and action)
         self.edit_mode_button = QPushButton("edit")
         self.edit_mode_button.clicked.connect(self.toggle_edit_mode)
         layout.addWidget(button_area_widget, 0, 1)
         button_area_layout.addWidget(self.edit_mode_button)
 
+        self.edit_mode_action = QAction("Edit Mode Action", self)
+        self.edit_mode_action.triggered.connect(self.toggle_edit_mode)
+
+        # save (button and  action)
         self.save_button = QPushButton("save")
         button_area_layout.addWidget(self.save_button)
+        self.save_button.clicked.connect(self.save_edited_content)
 
+        self.save_action = QAction("Save Action", self)
+        self.save_action.triggered.connect(self.save_edited_content)
+
+
+        # widget to display the image
         self.image_label = QLabel(self)
         self.image_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.image_label, 1, 0)
 
-        self.info_label = QLabel(' test ', self)
+        # display information about the image
+        self.info_label = QLabel('', self)
         self.info_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.info_label, 2, 0)
 
-        self.circle = ColorCircle('gray')
-        self.circle.setFixedSize(20, 20)
-        layout.addWidget(self.circle, 1, 1, alignment=Qt.AlignCenter)
-        self.help_label = QLabel("W: start recording; S: Stop recording; D: go forward; A: go back", self)
+        # display information about the recording state
+        self.recording_symbol = ColorCircle('gray')
+        self.recording_symbol.setFixedSize(20, 20)
+        layout.addWidget(self.recording_symbol, 1, 1, alignment=Qt.AlignCenter)
+        self.help_label = QLabel("F2: start recording; Space: Stop recording; →: go forward; ←: go back", self)
         layout.addWidget(self.help_label, 3, 0)
+
+        self.define_shortcuts()
 
         self.load_content()
         print("init done")
+
+    def define_shortcuts(self):
+        self.connect_key_sequence_to_method(QKeySequence("F2"), self.start_recording)
+        self.connect_key_sequence_to_method(QKeySequence("Space"), self.stop_recording_and_save)
+        self.connect_key_sequence_to_method(QKeySequence("PgDown"), self.forward1)
+        self.connect_key_sequence_to_method(QKeySequence("PgUp"), self.backward1)
+        self.connect_key_sequence_to_method(QKeySequence("Ctrl+PgDown"), self.forward10)
+        self.connect_key_sequence_to_method(QKeySequence("Ctrl+PgUp"), self.backward10)
+
+        self.connect_key_sequence_to_method(QKeySequence("Ctrl+E"), self.toggle_edit_mode)
+        self.connect_key_sequence_to_method(QKeySequence("Ctrl+S"), self.save_edited_content)
+        self.connect_key_sequence_to_method(QKeySequence("Ctrl+Q"), self.close)
+
+        self.edit_mode_action.setShortcut(QKeySequence("Ctrl+P"))
+        self.save_action.setShortcut(QKeySequence("Ctrl+L"))
 
     def load_content(self):
         image_path = self.image_files[self.current_index]
@@ -150,7 +182,7 @@ class ImageTextAudioTool(QMainWindow):
 
 
     def change_index_by(self, value):
-        assert value in (-1, 1)
+        assert value in (-1, -10, 1, 10)
 
         self.current_index += value
         if self.current_index >= len(self.image_files):
@@ -168,6 +200,9 @@ class ImageTextAudioTool(QMainWindow):
         self.main_text_browser.setHtml(outer_html)
 
         self.main_text_field.setText(md_src)
+
+    def save_edited_content(self):
+        print("not yet implemented")
 
     def toggle_edit_mode(self):
 
@@ -200,22 +235,26 @@ class ImageTextAudioTool(QMainWindow):
             time.sleep(0.1)
             self.start_recording()
 
-    def keyPressEvent(self, event):
-        # print("key pressed", event.key())
-        if event.key() == Qt.Key_W:
-            self.start_recording()
-        elif event.key() in (Qt.Key_Space, Qt.Key_D):
-            # move forward
-            self._forward_or_backward(value=1)
-        elif event.key() == Qt.Key_A:
-            # backward
-            self._forward_or_backward(value=-1)
+    def connect_key_sequence_to_method(self, ks: QKeySequence, method: callable):
+        i = len(self.anonymous_actions)
+        action = QAction(f"Action {i}", self)
+        self.anonymous_actions.append(action)
+        action.setShortcut(QKeySequence(ks))
+        action.triggered.connect(method)
+        self.addAction(action)
 
-        elif event.key() == Qt.Key_S:
-            self.stop_recording_and_save()
-        elif event.key() == Qt.Key_X:
-            self.stop_recording_and_save()
-            self.close()
+
+    def forward1(self):
+        self._forward_or_backward(value=1)
+
+    def forward10(self):
+        self._forward_or_backward(value=10)
+
+    def backward1(self):
+        self._forward_or_backward(value=-1)
+
+    def backward10(self):
+        self._forward_or_backward(value=-10)
 
     def recording_callback(self, in_data, frame_count, time_info, status):
 
@@ -226,7 +265,7 @@ class ImageTextAudioTool(QMainWindow):
         return (in_data, pyaudio.paContinue)
 
     def start_recording(self):
-        self.circle.setColor('red')
+        self.recording_symbol.setColor('red')
         self.audio_frames = []
         self.stream = self.audio.open(format=pyaudio.paInt16,
                                       channels=1,
@@ -243,7 +282,7 @@ class ImageTextAudioTool(QMainWindow):
 
 
     def stop_recording_and_save(self):
-        self.circle.setColor('gray')
+        self.recording_symbol.setColor('gray')
         if self.stream:
             self.stream.stop_stream()
             self.stream.close()
@@ -291,9 +330,7 @@ class ImageTextAudioTool(QMainWindow):
         """
         This is called if the window is closed via click on the x-symbol
         """
-        if self.stream is not None:
-            self.stream.stop_stream()
-            self.stream.close()
+        self.stop_recording_and_save()
         self.audio.terminate()
 
 

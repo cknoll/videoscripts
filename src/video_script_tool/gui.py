@@ -4,14 +4,16 @@ import glob
 import threading
 import time
 import contextlib
+from collections import defaultdict
+import time
 
 
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QLabel, QTextBrowser, QVBoxLayout, QPushButton, QWidget, QTextEdit, QGridLayout,
-    QAction, QDialog, QTableWidget, QTableWidgetItem, QHBoxLayout
+    QAction, QDialog, QTableWidget, QTableWidgetItem, QHBoxLayout,
 )
-from PyQt5.QtGui import QPixmap, QPainter, QColor, QKeySequence
-from PyQt5.QtCore import Qt, QRect
+from PyQt5.QtGui import QPixmap, QPainter, QColor, QKeySequence, QTextCursor
+from PyQt5.QtCore import Qt, QRect, QTimer
 import markdown
 import pyaudio
 import wave
@@ -48,6 +50,12 @@ class ColorCircle(QWidget):
         self.update()
 
 
+class FocussingTextEdit(QTextEdit):
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.setFocus()
+
+
 class ImageTextAudioTool(QMainWindow):
     def __init__(self, args):
         super().__init__()
@@ -58,6 +66,7 @@ class ImageTextAudioTool(QMainWindow):
         self.current_index = 0
         self.is_recording = False
         self.audio_frames = None
+        self.cursor_positions = defaultdict(lambda: 0)
         self.anonymous_actions = []
         self.shortcuts: list[tuple[str]] = []
         self.load_data()
@@ -68,7 +77,12 @@ class ImageTextAudioTool(QMainWindow):
         self.stream = None
 
         self.initUI()
-        self.show_help()
+
+        if 0:
+            self.debug_timer = QTimer()
+            # self.timer.setSingleShot(True)  # Set the timer to single shot mode
+            self.debug_timer.timeout.connect(self.debug_output)
+            self.debug_timer.start(2000)
 
     def load_data(self):
 
@@ -112,27 +126,21 @@ class ImageTextAudioTool(QMainWindow):
         self.main_text_browser.setFixedSize(1000, 300)
         layout.addWidget(self.main_text_browser, 0, 0, alignment=Qt.AlignCenter)
 
-        self.main_text_field = QTextEdit(self)
+        self.main_text_field = FocussingTextEdit(self)
         self.main_text_field.setFixedSize(500, 300)
         layout.addWidget(self.main_text_field, 0, 0, alignment=Qt.AlignCenter)
         self.main_text_field.hide()
 
-        # edit mode (button and action)
+        # edit mode button
         self.edit_mode_button = QPushButton("Edit")
         self.edit_mode_button.clicked.connect(self.toggle_edit_mode)
         layout.addWidget(button_area_widget, 0, 1)
         button_area_layout.addWidget(self.edit_mode_button)
 
-        # self.edit_mode_action = QAction("Edit Mode Action", self)
-        # self.edit_mode_action.triggered.connect(self.toggle_edit_mode)
-
-        # save (button and  action)
+        # save button
         self.save_button = QPushButton("Save")
         button_area_layout.addWidget(self.save_button)
         self.save_button.clicked.connect(self.save_edited_content)
-
-        # self.save_action = QAction("Save Action", self)
-        # self.save_action.triggered.connect(self.save_edited_content)
 
         # help button
         self.help_button = QPushButton("Help (F1)")
@@ -173,9 +181,6 @@ class ImageTextAudioTool(QMainWindow):
         self.connect_key_sequence_to_method("Ctrl+E", "toggle edit mode", self.toggle_edit_mode)
         self.connect_key_sequence_to_method("Ctrl+S", "save text", self.save_edited_content)
         self.connect_key_sequence_to_method("Ctrl+Q", "quit", self.close)
-
-        # self.edit_mode_action.setShortcut(QKeySequence("Ctrl+P"))
-        # self.save_action.setShortcut(QKeySequence("Ctrl+L"))
 
     def show_help(self):
 
@@ -265,6 +270,7 @@ class ImageTextAudioTool(QMainWindow):
 
     def save_edited_content(self):
         print("not yet implemented")
+        self.main_text_field.setFocus()
 
     def toggle_edit_mode(self):
 
@@ -275,6 +281,8 @@ class ImageTextAudioTool(QMainWindow):
             self.render_md_to_html(self.main_text_field.toPlainText())
             self.main_text_field.hide()
             self.main_text_browser.show()
+            self.cursor_positions[self.current_index] = self.main_text_field.textCursor().position()
+            print(self.cursor_positions[self.current_index])
 
         else:
             # Switch to edit mode
@@ -282,7 +290,29 @@ class ImageTextAudioTool(QMainWindow):
             self.main_text_browser.hide()
             self.main_text_field.show()
 
+            cursor = self.main_text_field.textCursor()
+            cursor.setPosition(self.cursor_positions[self.current_index])
+            self.main_text_field.moveCursor(QTextCursor.End, QTextCursor.MoveAnchor)
+
+            if 0:
+                self.debug_timer = QTimer()
+                self.debug_timer.setSingleShot(True)  # Set the timer to single shot mode
+                self.debug_timer.timeout.connect(self.debug_output)
+                self.debug_timer.start(2000)
+
+            # self.main_text_browser.setFocus()
+            # self.main_text_field.setCursor(cursor)
+
         self.edit_mode = not self.edit_mode  # Toggle mode
+
+    def debug_output(self):
+        focused_widget = QApplication.focusWidget()
+        print(f"{focused_widget.__class__.__name__} has focus.")
+        # print("timer worked")
+        self.main_text_browser.setFocus()
+        focused_widget = QApplication.focusWidget()
+        if hasattr(focused_widget, "text"):
+            print(f"now: {focused_widget.__class__.__name__} has focus. {focused_widget.text()}")
 
     def _forward_or_backward(self, value):
         was_recording = False

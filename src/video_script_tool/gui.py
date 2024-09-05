@@ -165,7 +165,7 @@ class ImageTextAudioTool(QMainWindow):
         self.reload_button.clicked.connect(self.reload_content)
 
         # help button
-        self.help_button = QPushButton("Help (F1)")
+        self.help_button = QPushButton("Help (H))")
         self.help_button.clicked.connect(self.show_help)
         button_area_layout.addWidget(self.help_button)
 
@@ -190,8 +190,8 @@ class ImageTextAudioTool(QMainWindow):
         print("init done")
 
     def define_shortcuts(self):
-        self.connect_key_sequence_to_method("F1", "show this help dialog", self.show_help)
-        self.connect_key_sequence_to_method("F2", "start recording", self.start_recording)
+        self.connect_key_sequence_to_method("H", "show this help dialog", self.show_help)
+        self.connect_key_sequence_to_method("R", "start recording", self.start_recording)
         self.connect_key_sequence_to_method("Space", "stop and save recording", self.stop_recording_and_save)
         self.connect_key_sequence_to_method("PgDown", "forward", self.forward1)
         self.connect_key_sequence_to_method("PgUp", "backward", self.backward1)
@@ -203,7 +203,7 @@ class ImageTextAudioTool(QMainWindow):
 
     def show_help(self):
 
-        table_data = self.shortcuts[:-3]
+        table_data = self.shortcuts
 
         class HelpDialog(QDialog):
             def __init__(self):
@@ -306,7 +306,7 @@ class ImageTextAudioTool(QMainWindow):
         # print(f"{self.edit_mode=}")
         if self.edit_mode:
             # Switch to render mode
-            self.edit_mode_button.setText("edit")
+            self.edit_mode_button.setText("Edit")
             self.render_md_to_html(self.main_text_field.toPlainText())
             self.main_text_field.hide()
             self.main_text_browser.show()
@@ -315,7 +315,7 @@ class ImageTextAudioTool(QMainWindow):
 
         else:
             # Switch to edit mode
-            self.edit_mode_button.setText("render")
+            self.edit_mode_button.setText("Render")
             self.main_text_browser.hide()
             self.main_text_field.show()
 

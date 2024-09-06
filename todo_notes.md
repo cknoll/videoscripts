@@ -9,10 +9,17 @@
     - [x] smart caching
     - [x] write `all_texts.md`
     - [x] make fragment text extraction more robust (in w.r.t. fragments per slide)
-- [.] make it possible to easily create multiple audio recordings (one key -> save running recording + start new recording)
+- [x] make it possible to easily create multiple audio recordings (one key -> save running recording + start new recording)
     - [x] implement simple gui
     - [x] make audio recording work
     - [x] improve gui
-- [ ] Extract text for each fragment to separate text-file
+- [x] Extract text for each fragment to separate text-file
+- [ ] Update original slide source with edited text from all_texts.md
+- [ ] Make backup before overwriting files (md, wav)
+- Improve GUI:
+    - [ ] add preview image of next slide
+    - [ ] make size of widgets (current slide, next slide) adjustable
+    - [ ] show existing audio (file time stamp)
+    - [ ] add possibility to play existing audio
 - [x] improve audio preprocessing
     - [x] prevent clipping

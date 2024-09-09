@@ -80,6 +80,9 @@ class ImageTextAudioTool(QMainWindow):
         self.current_index = 0
         self.is_recording = False
         self.audio_frames = None
+
+        self.old_col1_width = self.col1_width = 800
+        self.automatic_size_increase_counter = 0
         self.cursor_positions = defaultdict(lambda: 0)
 
         # for shortcuts and help dialog
@@ -128,6 +131,8 @@ class ImageTextAudioTool(QMainWindow):
             self.image_files = self.image_files[:minval]
 
     def determine_dimensions(self):
+
+        self.old_col1_width = self.col1_width
 
         self.col1_width = int(self.width()*.63)
         self.col1_width2 = int(self.width()*.50)
@@ -202,6 +207,7 @@ class ImageTextAudioTool(QMainWindow):
         self.define_shortcuts()
 
         self.load_content()
+        self.automatic_size_increase_counter = 0
         print("init done")
 
     def define_shortcuts(self):
@@ -274,7 +280,9 @@ class ImageTextAudioTool(QMainWindow):
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         self.determine_dimensions()
-        # self.load_content()
+
+        # reload images but prevent feedback loop (resizeEvent -> new image sizes -> resizeEvent -> ...)
+        self.load_content(auto_call=True)
 
     def _load_image(self, index, image_label, size):
         if index >= len(self.image_files):
@@ -284,7 +292,17 @@ class ImageTextAudioTool(QMainWindow):
         pixmap = QPixmap(image_path)
         image_label.setPixmap(pixmap.scaled(size, size, Qt.KeepAspectRatio))
 
-    def load_content(self):
+    def load_content(self, auto_call=False):
+
+        if auto_call and self.col1_width > self.old_col1_width:
+            if self.automatic_size_increase_counter > 3:
+                # do not load images again to prevent self-triggered feedback loop
+                print("skip automatic reize of images")
+                return
+            else:
+                self.automatic_size_increase_counter += 1
+        else:
+            self.automatic_size_increase_counter = 0
 
         self._load_image(self.current_index, self.main_image, size=self.col1_width)
         self._load_image(self.current_index + 1, self.preview_image, size=self.col2_width)

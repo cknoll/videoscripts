@@ -3,3 +3,4 @@ pyaudio
 PyQt5
 ipydex
 markdown
+pedalboard

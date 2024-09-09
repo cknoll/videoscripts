@@ -186,7 +186,8 @@ class MainManager:
             os.system(cmd)
 
             # ffmpeg expects the paths in the filelist relative to the path of the filelist
-            video_snippet_fpath_rel = os.path.join(SNIPPET_DIR, f"temp{i:04d}.mp4")
+            # ffmpeg also needs slashes (even on windows); backslashes lead to problems
+            video_snippet_fpath_rel = f"{SNIPPET_DIR}/temp{i:04d}.mp4"
             file_list_entries.append(f"file {video_snippet_fpath_rel}")
 
             if i >= self.snippet_limit:

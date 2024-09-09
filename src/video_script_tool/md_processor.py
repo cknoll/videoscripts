@@ -104,7 +104,12 @@ class TextExtractor:
             slide_fragment_texts = [elt.strip() for elt in slide_fragment_texts]
 
             n1 = len(slide_fragment_texts)
-            n2 = self.slide_fragment_number_list[slide_idx]
+            try:
+                n2 = self.slide_fragment_number_list[slide_idx]
+            except IndexError:
+                print(util.yellow(f"Slide {slide_idx + 1}: not found. Exiting."))
+                break
+
 
             if  n1 != n2:
                 print(util.yellow(f"Slide {slide_idx + 1}: found {n1} fragment texts, but expected {n2}"))

@@ -109,7 +109,7 @@ class ImageTextAudioTool(QMainWindow):
         # load texts
 
         txt_fpath = pjoin(self.project_dir, self.src_fname)
-        with open(txt_fpath, "r") as fp:
+        with open(txt_fpath, "r", encoding="utf8") as fp:
             txt_data = fp.read()
 
         self.md_snippets = txt_data.split(self.md_snippet_separator)

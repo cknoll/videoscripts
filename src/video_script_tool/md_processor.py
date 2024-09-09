@@ -53,7 +53,7 @@ class TextExtractor:
             if (time.time()- stat.st_mtime)/60 < 10 or self.force_cache:
 
                 print(f"using cached version of {self.slides_full_source_fpath} (no download)")
-                with open(self.slides_full_source_fpath, "r") as fp:
+                with open(self.slides_full_source_fpath, "r", encoding="utf8") as fp:
                     self.slides_full_source = fp.read()
                 return
 

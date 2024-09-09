@@ -81,6 +81,7 @@ class ImageTextAudioTool(QMainWindow):
         self.is_recording = False
         self.audio_frames = None
 
+        self.trigger_custom_resizeEvent = False
         self.old_col1_width = self.col1_width = 800
         self.automatic_size_increase_counter = 0
         self.cursor_positions = defaultdict(lambda: 0)
@@ -133,19 +134,22 @@ class ImageTextAudioTool(QMainWindow):
     def determine_dimensions(self):
 
         self.old_col1_width = self.col1_width
+        a = .9
 
-        self.col1_width = int(self.width()*.63)
-        self.col1_width2 = int(self.width()*.50)
-        self.row1_height = int(self.height()*.25)
+        self.col1_width = int(self.width()*.63*a)
+        self.col1_width2 = int(self.width()*.50*a)
+        self.row1_height = int(self.height()*.2*a)
 
-        self.col2_width = int(self.width()*.31)
+        self.col2_width = int(self.width()*.31*a)
+
 
     def initUI(self):
 
+        # self.setGeometry(600, 100, 1200, 1000)
+        self.showMaximized()
         self.determine_dimensions()
 
         self.setWindowTitle("Image Text Audio Tool")
-        self.setGeometry(600, 100, 1200, 1000)
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -208,6 +212,8 @@ class ImageTextAudioTool(QMainWindow):
 
         self.load_content()
         self.automatic_size_increase_counter = 0
+        self.trigger_custom_resizeEvent = True
+        self.resizeEvent()
         print("init done")
 
     def define_shortcuts(self):
@@ -279,12 +285,18 @@ class ImageTextAudioTool(QMainWindow):
         help_dialog = HelpDialog()
         help_dialog.exec_()
 
-    def resizeEvent(self, event) -> None:
-        super().resizeEvent(event)
+    def resizeEvent(self, event=None) -> None:
+        if event:
+            super().resizeEvent(event)
+        if not self.trigger_custom_resizeEvent:
+            return
+
         self.determine_dimensions()
 
         # reload images but prevent feedback loop (resizeEvent -> new image sizes -> resizeEvent -> ...)
+        self.main_text_browser.setFixedSize(self.col1_width, self.row1_height)
         self.load_content(auto_call=True)
+        # self.trigger_custom_resizeEvent = False
 
     def _load_image(self, index, image_label, size):
 
@@ -343,8 +355,8 @@ class ImageTextAudioTool(QMainWindow):
 
         if md_src_preview:
             html_content_preview = markdown.markdown(md_src_preview)
-            preview_style = "color: #444; background-color: #bbb; margin-top: 1em;"
-            outer_html = f'{outer_html}<hr><div style="{main_style} {preview_style}">{html_content_preview}</div>'
+            preview_style = "color: #999; margin-top: 1em;"
+            outer_html = f'{outer_html}<div style="{main_style} {preview_style}"><hr>{html_content_preview}</div>'
 
         self.main_text_browser.setHtml(outer_html)
 

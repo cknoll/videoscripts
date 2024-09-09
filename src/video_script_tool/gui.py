@@ -47,6 +47,83 @@ def suppress_output():
         with contextlib.redirect_stdout(fnull), contextlib.redirect_stderr(fnull):
             yield
 
+class AudioPlayer:
+    def __init__(self):
+        self.playing = False
+        self.paused = False
+        self.stop_flag = False
+        self.wf = None
+        self.stream = None
+        self.p = None
+        self.thread = None
+
+    def play_audio(self, audio_fpath):
+        self.stop_flag = False
+        self.paused = False
+        self.playing = True
+
+        def stream_audio():
+            chunk = 1024
+            self.wf = wave.open(audio_fpath, 'rb')
+            self.p = pyaudio.PyAudio()
+
+            self.stream = self.p.open(
+                format=self.p.get_format_from_width(self.wf.getsampwidth()),
+                channels=self.wf.getnchannels(),
+                rate=self.wf.getframerate(),
+                output=True
+            )
+
+            data = self.wf.readframes(chunk)
+
+            while data and not self.stop_flag:
+                if not self.paused:
+
+                    # debug and robustify play feature
+                    # is_stopped = !!
+                    try:
+                        self.stream.write(data)
+                    except Exception as ex:
+                        IPS()
+                    data = self.wf.readframes(chunk)
+                else:
+                    self.stream.stop_stream()
+
+            self.stream.stop_stream()
+            self.stream.close()
+            self.wf.close()
+            self.p.terminate()
+            self.playing = False
+
+        self.thread = threading.Thread(target=stream_audio)
+        self.thread.start()
+
+    def pause(self):
+        if self.playing and not self.paused:
+            self.paused = True
+            if self.stream:
+                self.stream.stop_stream()
+
+    def resume(self):
+        if self.playing and self.paused:
+            self.paused = False
+            if self.stream:
+                try:
+                    self.stream.start_stream()
+                except Exception as ex:
+                    IPS()
+
+    def stop(self):
+        if self.playing:
+            self.stop_flag = True
+            self.playing = False
+            self.paused = False
+            if self.stream:
+                self.stream.stop_stream()
+
+    def is_playing(self):
+        return self.playing
+
 
 class ColorCircle(QWidget):
     def __init__(self, color):
@@ -80,6 +157,8 @@ class ImageTextAudioTool(QMainWindow):
         self.current_index = 0
         self.is_recording = False
         self.audio_frames = None
+
+        self.audio_player = AudioPlayer()
 
         self.trigger_custom_resizeEvent = False
         self.old_col1_width = self.col1_width = 800
@@ -184,6 +263,11 @@ class ImageTextAudioTool(QMainWindow):
         button_area_layout.addWidget(self.reload_button)
         self.reload_button.clicked.connect(self.reload_content)
 
+        # play button
+        self.play_button = QPushButton("Play Audio (P))")
+        self.play_button.clicked.connect(self.play_pause_audio)
+        button_area_layout.addWidget(self.play_button)
+
         # help button
         self.help_button = QPushButton("Help (H))")
         self.help_button.clicked.connect(self.show_help)
@@ -210,6 +294,7 @@ class ImageTextAudioTool(QMainWindow):
 
         self.define_shortcuts()
 
+        self._handle_play_button()
         self.load_content()
         self.automatic_size_increase_counter = 0
         self.trigger_custom_resizeEvent = True
@@ -227,6 +312,7 @@ class ImageTextAudioTool(QMainWindow):
         self.connect_key_sequence_to_method("Ctrl+PgDown", "forward 10 steps", self.forward10)
         self.connect_key_sequence_to_method("Ctrl+PgUp", "backward 10 steps", self.backward10)
         self.connect_key_sequence_to_method("Ctrl+E", "toggle edit mode", self.toggle_edit_mode)
+        self.connect_key_sequence_to_method("P", "play/pause audio", self.play_pause_audio)
         self.connect_key_sequence_to_method("Ctrl+S", "save text", self.save_edited_content)
         self.connect_key_sequence_to_method("Ctrl+Q", "quit", self.close)
 
@@ -418,6 +504,25 @@ class ImageTextAudioTool(QMainWindow):
             return False
         return True
 
+        # source: https://realpython.com/playing-and-recording-sound-python
+    def play_pause_audio(self):
+
+        audio_fpath = pjoin(self.audio_path, f"{self.get_current_image_basename()}.wav")
+
+        if not self.audio_player.is_playing():
+            self.audio_player.play_audio(audio_fpath)
+        elif self.audio_player.paused:
+            self.audio_player.resume()
+        else:
+            self.audio_player.pause()
+
+    def _handle_play_button(self):
+        audio_fpath = pjoin(self.audio_path, f"{self.get_current_image_basename()}.wav")
+        if os.path.isfile(audio_fpath):
+            self.play_button.setEnabled(True)
+        else:
+            self.play_button.setEnabled(False)
+
     def _forward_or_backward(self, value):
 
         if not self.assert_no_unsaved_changes():
@@ -429,6 +534,9 @@ class ImageTextAudioTool(QMainWindow):
             was_recording = True
         self.change_index_by(value)
         self.load_content()
+        self.audio_player.stop()
+
+        self._handle_play_button()
 
         if was_recording:
             # only start new recording if it was running before
@@ -512,6 +620,7 @@ class ImageTextAudioTool(QMainWindow):
             self.stream.close()
             self.stream = None
             threading.Thread(target=self._save_audio).start()
+            self._handle_play_button()
         else:
             print("No audio stream to save")
 

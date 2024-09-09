@@ -86,7 +86,7 @@ class ImageTextAudioTool(QMainWindow):
         self.cursor_positions = defaultdict(lambda: 0)
 
         # for shortcuts and help dialog
-        self.anonymous_actions = []
+        self.anonymous_actions = {}
         self.shortcuts: list[tuple[str]] = []
 
         # split and join md snippets by this string
@@ -216,6 +216,8 @@ class ImageTextAudioTool(QMainWindow):
         self.connect_key_sequence_to_method("Space", "stop and save recording", self.stop_recording_and_save)
         self.connect_key_sequence_to_method("PgDown", "forward", self.forward1)
         self.connect_key_sequence_to_method("PgUp", "backward", self.backward1)
+        self.connect_key_sequence_to_method("Right", "forward", self.forward1)
+        self.connect_key_sequence_to_method("Left", "backward", self.backward1)
         self.connect_key_sequence_to_method("Ctrl+PgDown", "forward 10 steps", self.forward10)
         self.connect_key_sequence_to_method("Ctrl+PgUp", "backward 10 steps", self.backward10)
         self.connect_key_sequence_to_method("Ctrl+E", "toggle edit mode", self.toggle_edit_mode)
@@ -285,8 +287,6 @@ class ImageTextAudioTool(QMainWindow):
         self.load_content(auto_call=True)
 
     def _load_image(self, index, image_label, size):
-        if index >= len(self.image_files):
-            index = len(self.image_files) - 1
 
         image_path = self.image_files[index]
         pixmap = QPixmap(image_path)
@@ -304,12 +304,20 @@ class ImageTextAudioTool(QMainWindow):
         else:
             self.automatic_size_increase_counter = 0
 
+        next_index = self.current_index + 1
+
+        md_src_main = self.md_snippets[self.current_index]
+
+        if next_index >= len(self.image_files):
+            next_index = len(self.image_files) - 1
+            md_src_preview = None
+        else:
+            md_src_preview = self.md_snippets[next_index]
+
         self._load_image(self.current_index, self.main_image, size=self.col1_width)
-        self._load_image(self.current_index + 1, self.preview_image, size=self.col2_width)
+        self._load_image(next_index, self.preview_image, size=self.col2_width)
 
-        # Load image
-
-        self.render_md_to_html(self.md_snippets[self.current_index])
+        self.render_md_to_html(md_src_main, md_src_preview)
         self.info_label.setText(f"{self.current_index} {self.get_current_image_basename()}")
 
     def change_index_by(self, value):
@@ -321,19 +329,30 @@ class ImageTextAudioTool(QMainWindow):
         if self.current_index <= 0:
             self.current_index = 0
 
-    def render_md_to_html(self, md_src):
+    def render_md_to_html(self, md_src_main, md_src_preview=None):
+        """
+        :param md_src_main:     str; markdown source for voice over text
+        :param md_src_preview:  str; voice over md source for the next frame
+        """
 
         # render markdown
-        html_content = markdown.markdown(md_src)
+        html_content_main = markdown.markdown(md_src_main)
 
-        style = "font-size: large; text-align:center;"
-        outer_html = f'<div style="{style}">{html_content}</div>'
+        main_style = "font-size: large; text-align:center;"
+        outer_html = f'<div style="{main_style}">{html_content_main}</div>'
+
+        if md_src_preview:
+            html_content_preview = markdown.markdown(md_src_preview)
+            preview_style = "color: #444; background-color: #bbb; margin-top: 1em;"
+            outer_html = f'{outer_html}<hr><div style="{main_style} {preview_style}">{html_content_preview}</div>'
+
         self.main_text_browser.setHtml(outer_html)
 
-        self.main_text_field.setText(md_src)
+        self.main_text_field.setText(md_src_main)
 
     def reload_content(self):
         self.main_text_field.setText(self.md_snippets[self.current_index])
+        self.load_content()
 
     def save_edited_content(self):
         content = self.main_text_field.toPlainText()
@@ -353,9 +372,12 @@ class ImageTextAudioTool(QMainWindow):
         if self.edit_mode:
             # Switch to render mode
             self.edit_mode_button.setText("Edit")
+
+            # TODO: add preview for next vo text also after editing
             self.render_md_to_html(self.main_text_field.toPlainText())
             self.main_text_field.hide()
             self.main_text_browser.show()
+            self.main_text_browser.setFocus()
             self.cursor_positions[self.current_index] = self.main_text_field.textCursor().position()
             # print(self.cursor_positions[self.current_index])
 
@@ -401,14 +423,35 @@ class ImageTextAudioTool(QMainWindow):
             time.sleep(0.1)
             self.start_recording()
 
+    def remove_custom_action(self, key_tuple: tuple):
+        """
+        :param key_tuple: tuple[str, str]; example: ("Right", "forward"), i.e. (<key>, <action_label>)
+
+        """
+        remove_idcs = []
+        for i, kt in enumerate(self.shortcuts):
+            if kt == key_tuple:
+                remove_idcs.append(i)
+
+        for i in remove_idcs[::-1]:
+                self.shortcuts.pop(i)
+
+        try:
+            action = self.anonymous_actions.pop(key_tuple)
+        except KeyError:
+            return
+
+        self.removeAction(action)
+
     def connect_key_sequence_to_method(self, ks: str, action_label: str, method: callable):
 
         assert isinstance(ks, str)
-        self.shortcuts.append((ks, action_label))
+        key_tuple = (ks, action_label)
+        self.shortcuts.append(key_tuple)
 
         i = len(self.anonymous_actions)
         action = QAction(f"Action {i}", self)
-        self.anonymous_actions.append(action)
+        self.anonymous_actions[key_tuple] = action
         action.setShortcut(QKeySequence(ks))
         action.triggered.connect(method)
         self.addAction(action)

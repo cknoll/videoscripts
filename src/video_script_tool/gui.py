@@ -127,7 +127,18 @@ class ImageTextAudioTool(QMainWindow):
             self.md_snippets = self.md_snippets[:minval]
             self.image_files = self.image_files[:minval]
 
+    def determine_dimensions(self):
+
+        self.col1_width = int(self.width()*.63)
+        self.col1_width2 = int(self.width()*.50)
+        self.row1_height = int(self.height()*.25)
+
+        self.col2_width = int(self.width()*.31)
+
     def initUI(self):
+
+        self.determine_dimensions()
+
         self.setWindowTitle("Image Text Audio Tool")
         self.setGeometry(600, 100, 1200, 1000)
 
@@ -140,11 +151,11 @@ class ImageTextAudioTool(QMainWindow):
         button_area_widget.setLayout(button_area_layout)
 
         self.main_text_browser = QTextBrowser(self)
-        self.main_text_browser.setFixedSize(1200, 200)
+        self.main_text_browser.setFixedSize(self.col1_width, self.row1_height)
         layout.addWidget(self.main_text_browser, 0, 0, alignment=Qt.AlignCenter)
 
         self.main_text_field = FocussingTextEdit(self)
-        self.main_text_field.setFixedSize(800, 200)
+        self.main_text_field.setFixedSize(self.col1_width2, self.row1_height)
         layout.addWidget(self.main_text_field, 0, 0, alignment=Qt.AlignCenter)
         self.main_text_field.hide()
 
@@ -174,10 +185,14 @@ class ImageTextAudioTool(QMainWindow):
         self.info_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.info_label, 1, 0)
 
-        # widget to display the image
-        self.image_label = QLabel(self)
-        self.image_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self.image_label, 2, 0, 2, 1, alignment=Qt.AlignCenter)
+        # widgets to display the image
+        self.main_image = QLabel(self)
+        self.main_image.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.main_image, 2, 0, alignment=Qt.AlignCenter)
+
+        self.preview_image = QLabel(self)
+        self.preview_image.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.preview_image, 2, 1, alignment=Qt.AlignCenter)
 
         # display information about the recording state
         self.recording_symbol = ColorCircle("gray")
@@ -256,12 +271,25 @@ class ImageTextAudioTool(QMainWindow):
         help_dialog = HelpDialog()
         help_dialog.exec_()
 
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self.determine_dimensions()
+        # self.load_content()
+
+    def _load_image(self, index, image_label, size):
+        if index >= len(self.image_files):
+            index = len(self.image_files) - 1
+
+        image_path = self.image_files[index]
+        pixmap = QPixmap(image_path)
+        image_label.setPixmap(pixmap.scaled(size, size, Qt.KeepAspectRatio))
+
     def load_content(self):
-        image_path = self.image_files[self.current_index]
+
+        self._load_image(self.current_index, self.main_image, size=self.col1_width)
+        self._load_image(self.current_index + 1, self.preview_image, size=self.col2_width)
 
         # Load image
-        pixmap = QPixmap(image_path)
-        self.image_label.setPixmap(pixmap.scaled(1200, 1200, Qt.KeepAspectRatio))
 
         self.render_md_to_html(self.md_snippets[self.current_index])
         self.info_label.setText(f"{self.current_index} {self.get_current_image_basename()}")

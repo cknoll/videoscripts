@@ -36,6 +36,8 @@ from enum import Enum
 
 from .util import bred, PyaudioStdoutWrapper
 
+from .release import __version__
+
 
 from ipydex import IPS
 
@@ -305,7 +307,7 @@ class ImageTextAudioTool(QMainWindow):
         self.showMaximized()
         self.determine_dimensions()
 
-        self.setWindowTitle("Image Text Audio Tool")
+        self.setWindowTitle(f"Image Text Audio Tool ({__version__})")
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)

@@ -19,8 +19,9 @@ class SlideCaptureManager:
     def __init__(self, args):
         self.project_dir = args.project_dir
         self.url = args.url
+        self.suffix = args.suffix
         self.first_slide_number = args.first_slide_number
-        self.image_dir = pjoin(self.project_dir, "images")
+        self.image_dir = f"images{self.suffix}"
         os.makedirs(self.image_dir, exist_ok=True)
 
     def capture_slides(self):
@@ -57,6 +58,8 @@ class SlideCaptureManager:
 
         last_slide_number = "1"
 
+        old_progress_width = -100.0
+
         while True:
             # Capture the current slide
             image_count += 1
@@ -69,11 +72,21 @@ class SlideCaptureManager:
                 break
 
             # Check for fragments (does not work reliably)
-            # fragments = driver.find_elements(By.CLASS_NAME, "fragment")
-            # visible_fragments = [f for f in fragments if "visible" in f.get_attribute("class")]
+            fragments = driver.find_elements(By.CLASS_NAME, "fragment")
+            visible_fragments = [f for f in fragments if "visible" in f.get_attribute("class")]
 
             driver.find_element(By.TAG_NAME, "body").send_keys(Keys.RIGHT)
+            time.sleep(0.8)  # Wait for transition
             new_slide_number = driver.find_elements(By.CLASS_NAME, "slide-number")[0].text
+
+            progress_element = driver.find_elements(By.CLASS_NAME, "progress")[0]
+            progress_span = progress_element.find_element(By.TAG_NAME, "span")
+            progress_width_str = progress_span.value_of_css_property("width")
+            assert progress_width_str.endswith("px")
+            progress_width = float(progress_width_str[:-2])
+
+            width_diff = progress_width - old_progress_width
+            print(f"{old_progress_width=} → {progress_width=} → {width_diff=}")
 
             if new_slide_number == last_slide_number:
                 # More fragments to reveal
@@ -85,10 +98,41 @@ class SlideCaptureManager:
             last_slide_number = new_slide_number
 
             # Check if we've reached the end of the presentation
-            if "enabled" not in driver.find_element(By.CLASS_NAME, "navigate-right").get_attribute("class"):
-                last_slide_flag = True
+            # There are 2 different situations:
+            # - last slide has no sub-slide
+            # - last slide has a sub-slide
 
-            time.sleep(0.5)  # Wait for transition
+            if "enabled" in driver.find_element(By.CLASS_NAME, "navigate-down").get_attribute("class"):
+                has_subslide = True
+            else:
+                has_subslide = False
+
+            if "enabled" in driver.find_element(By.CLASS_NAME, "navigate-right").get_attribute("class"):
+                has_next_slide = True
+            else:
+                has_next_slide = False
+
+            if not has_subslide:
+                if not has_next_slide:
+                    # break the loop after saving the last screenshot
+                    last_slide_flag = True
+                else:
+                    # there is a ">" symbol → at least one slide/fragment will follow
+                    pass
+            else:
+                # there is a subslide → we cannot use `has_next_slide` as indicator because it is
+                # missing on the last slide of a presentation if it has a subslide
+                # we use progress width instead
+                # note the progress bar luckily behaves differently if the the last slide has a subslide
+                if old_progress_width:
+                    width_diff = progress_width - old_progress_width
+                    print(f"{width_diff}")
+                    if width_diff == 0:
+                        # we've reached the end of the presentation
+                        break
+
+            # IPS(fragment_count>1)
+            old_progress_width = progress_width
 
         driver.quit()
 

@@ -29,6 +29,7 @@ def capture_slides():
     parser.add_argument("project_dir", help="specify project dir (see README)")
     parser.add_argument("url", help="specify url of presentation")
     parser.add_argument("--first-slide-number", "-fsn", help="specify first slide number", type=int, default=1)
+    parser.add_argument("--suffix", help="set a path suffix like '_a'", default="")
     args = parser.parse_args()
 
     from . import capture_slides

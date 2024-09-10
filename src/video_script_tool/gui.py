@@ -276,10 +276,16 @@ class ImageTextAudioTool(QMainWindow):
             print(bred("Caution:"))
             print(f"number of text snippets: {len(self.md_snippets)}")
             print(f"number of image files:   {len(self.image_files)}\n")
-            print("Skipping the leftover")
 
-            self.md_snippets = self.md_snippets[:minval]
-            self.image_files = self.image_files[:minval]
+            if len(self.image_files) > len(self.md_snippets):
+                diff = len(self.image_files) - len(self.md_snippets)
+                self.md_snippets.extend([f"placeholder text {i+1}" for i in range(diff)])
+                print("Adding placeholder texts")
+            else:
+                print("Skipping the leftover")
+
+                self.md_snippets = self.md_snippets[:minval]
+                self.image_files = self.image_files[:minval]
 
     def determine_dimensions(self):
 

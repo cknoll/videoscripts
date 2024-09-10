@@ -8,6 +8,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.keys import Keys
 
 from ipydex import IPS
 
@@ -18,6 +19,7 @@ class SlideCaptureManager:
     def __init__(self, args):
         self.project_dir = args.project_dir
         self.url = args.url
+        self.first_slide_number = args.first_slide_number
         self.image_dir = pjoin(self.project_dir, "images")
         os.makedirs(self.image_dir, exist_ok=True)
 
@@ -40,7 +42,7 @@ class SlideCaptureManager:
         driver.get(self.url)
 
         # Wait for the presentation to load
-        WebDriverWait(driver, 10).until(
+        WebDriverWait(driver, 30).until(
             EC.presence_of_element_located((By.CLASS_NAME, "reveal"))
         )
 
@@ -48,7 +50,7 @@ class SlideCaptureManager:
         driver.find_element(By.CLASS_NAME, "reveal").click()
         time.sleep(1)  # Wait for transition
 
-        slide_count = 1
+        slide_count = self.first_slide_number
         fragment_count = 1
         last_slide_flag = False
         image_count = 0
@@ -70,7 +72,7 @@ class SlideCaptureManager:
             # fragments = driver.find_elements(By.CLASS_NAME, "fragment")
             # visible_fragments = [f for f in fragments if "visible" in f.get_attribute("class")]
 
-            driver.find_element(By.TAG_NAME, "body").send_keys(" ")
+            driver.find_element(By.TAG_NAME, "body").send_keys(Keys.RIGHT)
             new_slide_number = driver.find_elements(By.CLASS_NAME, "slide-number")[0].text
 
             if new_slide_number == last_slide_number:

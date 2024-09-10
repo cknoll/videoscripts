@@ -220,7 +220,9 @@ class ImageTextAudioTool(QMainWindow):
     def __init__(self, args):
         super().__init__()
         self.project_dir = args.project_dir
-        self.audio_path = pjoin(self.project_dir, "audio")
+        self.suffix = args.suffix
+        self.audio_path = pjoin(self.project_dir, f"audio{self.suffix}")
+        self.image_dir = f"images{self.suffix}"
         self.edit_mode = False
         os.makedirs(self.audio_path, exist_ok=True)
         self.current_index = 0
@@ -241,7 +243,7 @@ class ImageTextAudioTool(QMainWindow):
         # split and join md snippets by this string
         self.md_snippet_separator = "\n---\n"
 
-        self.src_fname = "all_texts.md"
+        self.src_fname = f"all_texts{self.suffix}.md"
 
         self.load_data()
 
@@ -254,7 +256,7 @@ class ImageTextAudioTool(QMainWindow):
 
     def load_data(self):
 
-        pattern_img = pjoin(self.project_dir, "images", "*.png")
+        pattern_img = pjoin(self.project_dir, self.image_dir, "*.png")
         self.image_files = glob.glob(pattern_img)
         self.image_files.sort()
 

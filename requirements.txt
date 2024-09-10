@@ -5,3 +5,4 @@ ipydex
 markdown
 pedalboard
 colorama
+selenium

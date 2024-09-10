@@ -22,6 +22,8 @@ I want to achieve this either via command line or via a python script.
 
 - `video-script-cs --help` (shows options)
 - `video-script-cs <project-dir> <presentation-url>`
+- the optional option `--first-slide-number` might be useful if a presentation is divided into multiple parts:
+    - example: `video-script-cs --first-slide-number 42 <project-dir> <presentation-url>`
 
 ### Text Extrator
 
@@ -31,6 +33,7 @@ save them in `all_texts.md` (make them available for the next step).
 
 - `video-script-et --help` (shows options)
 - `video-script-et <project-dir> <md-source-url>`
+- useful option (example): `--suffix _a`
 
 
 ### GUI for Audio Recording
@@ -40,6 +43,7 @@ to record audio snippets for every slide-fragment (i.e. for every image)
 
 - `video-script-rag --help` (shows options)
 - `video-script-rag <project-dir>`
+- useful option (example): `--suffix _a`
 
 ### Snippet Joiner
 

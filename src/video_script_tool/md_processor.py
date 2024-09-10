@@ -15,11 +15,13 @@ class TextExtractor:
     def __init__(self, args):
         self.project_dir = args.project_dir
         self.url = args.url
+        self.suffix = args.suffix
         self.force_reload = args.force_reload
         self.force_cache = args.force_cache
         self.force_source = args.force_source
-        self.slides_full_source_fpath = pjoin(self.project_dir, "slides_full_source.md")
-        self.target_fpath = pjoin(self.project_dir, "all_texts.md")
+        self.image_dir = f"images{self.suffix}"
+        self.slides_full_source_fpath = pjoin(self.project_dir, f"slides_full_source{self.suffix}.md")
+        self.target_fpath = pjoin(self.project_dir, f"all_texts{self.suffix}.md")
 
         self.slides_full_source = None
         self.slide_src_list = None
@@ -57,6 +59,9 @@ class TextExtractor:
                     self.slides_full_source = fp.read()
                 return
 
+        # this works independently of how many "?" are in the provided url
+        self.url = self.url.split("?")[0]
+
         if self.url.endswith("/download"):
             url = self.url
         else:
@@ -78,12 +83,17 @@ class TextExtractor:
 
         self.slide_src_list = self.slides_full_source.split("\n\n---\n\n")
 
+        if 0:
+            with open(pjoin(self.project_dir, "debug.md"), "w") as fp:
+                for k, slide in enumerate(self.slide_src_list):
+                    fp.write(f"\n\n\n::::::: {k}\n\n{slide}")
+
         # ignore optional slideOptions
         if "\nslideOptions:\n" in self.slide_src_list[0]:
             self.slide_src_list.pop(0)
 
         # find out how much fragments each slide should have, based on the image filenames
-        pattern_img = os.path.join(self.project_dir, "images", "*.png")
+        pattern_img = os.path.join(self.project_dir, self.image_dir, "*.png")
         self.image_files = glob.glob(pattern_img)
         self.image_files.sort()
 

@@ -31,6 +31,9 @@ import markdown
 import pyaudio
 import wave
 
+from enum import Enum
+
+
 from .util import bred, PyaudioStdoutWrapper
 
 
@@ -47,13 +50,21 @@ def suppress_output():
         with contextlib.redirect_stdout(fnull), contextlib.redirect_stderr(fnull):
             yield
 
+# Audio Stream Status
+class ASS(Enum):
+    NONE = 0
+    ACTIVE = 1
+    STOPPED = 2
+    CLOSED = 3
+
+
 class AudioPlayer:
     def __init__(self):
         self.playing = False
         self.paused = False
         self.stop_flag = False
         self.wf = None
-        self.stream = None
+        self.playback_stream = None
         self.p = None
         self.thread = None
 
@@ -67,59 +78,117 @@ class AudioPlayer:
             self.wf = wave.open(audio_fpath, 'rb')
             self.p = pyaudio.PyAudio()
 
-            self.stream = self.p.open(
-                format=self.p.get_format_from_width(self.wf.getsampwidth()),
-                channels=self.wf.getnchannels(),
-                rate=self.wf.getframerate(),
-                output=True
-            )
+            try:
+                self.playback_stream = self.p.open(
+                    format=self.p.get_format_from_width(self.wf.getsampwidth()),
+                    channels=self.wf.getnchannels(),
+                    rate=self.wf.getframerate(),
+                    output=True
+                )
+            except OSError as err:
+                print("OSError while creation of stream object:", err)
+                self.p.terminate()
+                self.wf.close()
+                return
 
             data = self.wf.readframes(chunk)
 
+            i = 0
             while data and not self.stop_flag:
+                i += 1
+                if i % 10 == 0:
+                    pass
+                    # print(i, "Thread running")
                 if not self.paused:
 
-                    # debug and robustify play feature
-                    # is_stopped = !!
                     try:
-                        self.stream.write(data)
-                    except Exception as ex:
-                        IPS()
-                    data = self.wf.readframes(chunk)
-                else:
-                    self.stream.stop_stream()
+                        self.playback_stream.write(data)
+                    except OSError as err:
+                        print("OS Error")
+                        self.playback_stream.stop_stream()
+                        self.wf.close()
+                        self.p.terminate()
+                        print("aborting audio playback:", err)
+                        break
 
-            self.stream.stop_stream()
-            self.stream.close()
+                    except Exception as ex:
+                        print("unexpected exception:", ex)
+                        break
+                    try:
+                        data = self.wf.readframes(chunk)
+                    except ValueError:
+                        print("aborting audio playback (source closed)")
+                        break
+                else:
+                    self.playback_stream.stop_stream()
+
+            print("thread ending 1")
+            self.playback_stream.close()
             self.wf.close()
             self.p.terminate()
-            self.playing = False
+            print("thread ending 2")
+            # end of def stream_audio()
 
+        print("starting thread")
         self.thread = threading.Thread(target=stream_audio)
         self.thread.start()
+
+    def _get_stream_status(self) -> ASS:
+        if self.playback_stream is None:
+            return ASS.NONE
+        try:
+            if self.playback_stream.is_stopped():
+                res = ASS.STOPPED
+            else:
+                res = ASS.ACTIVE
+        except OSError:
+            res = ASS.CLOSED
+        return res
+
+    def _end_stream(self):
+        self.stop_flag = True
+        self.playing = False
+        self.paused = False
+
+        if self._get_stream_status() == ASS.STOPPED:
+            # the threaded loop is paused at data-reading
+            # unblock the thread and let it terminate due to stop_flag
+            self.playback_stream.start_stream()
+        else:
+            # pass
+            # ASS.ACTIVE is uncritical (thread will terminate due to stop_flag)
+
+            print("unhandled stream status", self._get_stream_status())
+
+        # the following is done at the end of the loop in the thread
+
+        # time.sleep(0.1)
+        # self.stream.stop_stream()
+        # self.stream.close()
+        # self.wf.close()
+        # self.p.terminate()
 
     def pause(self):
         if self.playing and not self.paused:
             self.paused = True
-            if self.stream:
-                self.stream.stop_stream()
+            if self.playback_stream:
+                self.playback_stream.stop_stream()
 
     def resume(self):
         if self.playing and self.paused:
             self.paused = False
-            if self.stream:
+            if self.playback_stream:
                 try:
-                    self.stream.start_stream()
+                    self.playback_stream.start_stream()
+                except OSError as err:
+                    if err.args[1].lower() == "stream closed":
+                        self._end_stream()
                 except Exception as ex:
-                    IPS()
+                    print("exception during resume:", ex)
 
     def stop(self):
         if self.playing:
-            self.stop_flag = True
-            self.playing = False
-            self.paused = False
-            if self.stream:
-                self.stream.stop_stream()
+            self._end_stream()
 
     def is_playing(self):
         return self.playing
@@ -268,6 +337,11 @@ class ImageTextAudioTool(QMainWindow):
         self.play_button.clicked.connect(self.play_pause_audio)
         button_area_layout.addWidget(self.play_button)
 
+        # stop button
+        self.stop_button = QPushButton("Stop Audio (O))")
+        self.play_button.clicked.connect(self.stop_audio)
+        button_area_layout.addWidget(self.stop_button)
+
         # help button
         self.help_button = QPushButton("Help (H))")
         self.help_button.clicked.connect(self.show_help)
@@ -313,6 +387,7 @@ class ImageTextAudioTool(QMainWindow):
         self.connect_key_sequence_to_method("Ctrl+PgUp", "backward 10 steps", self.backward10)
         self.connect_key_sequence_to_method("Ctrl+E", "toggle edit mode", self.toggle_edit_mode)
         self.connect_key_sequence_to_method("P", "play/pause audio", self.play_pause_audio)
+        self.connect_key_sequence_to_method("O", "stop audio", self.stop_audio)
         self.connect_key_sequence_to_method("Ctrl+S", "save text", self.save_edited_content)
         self.connect_key_sequence_to_method("Ctrl+Q", "quit", self.close)
 
@@ -516,6 +591,13 @@ class ImageTextAudioTool(QMainWindow):
         else:
             self.audio_player.pause()
 
+    def stop_audio(self):
+
+        # problem: play -> pause -stop
+        print("stop button")
+        # IPS()
+        self.audio_player.stop()
+
     def _handle_play_button(self):
         audio_fpath = pjoin(self.audio_path, f"{self.get_current_image_basename()}.wav")
         if os.path.isfile(audio_fpath):
@@ -534,6 +616,7 @@ class ImageTextAudioTool(QMainWindow):
             was_recording = True
         self.change_index_by(value)
         self.load_content()
+
         self.audio_player.stop()
 
         self._handle_play_button()
@@ -601,6 +684,8 @@ class ImageTextAudioTool(QMainWindow):
         if not self.assert_no_unsaved_changes():
             return
 
+        self.audio_player.stop()
+
         self.recording_symbol.setColor("red")
         self.audio_frames = []
         self.stream = self.audio.open(
@@ -659,6 +744,8 @@ class ImageTextAudioTool(QMainWindow):
         """
         self.stop_recording_and_save()
         self.audio.terminate()
+        self.audio_player.stop()
+        self.thread
 
 
 def main(args):
